@@ -1,0 +1,8 @@
+{
+  "frames": 147,
+  "maximumCombinedSpeechWeight": 0.6200000000000001,
+  "endSpeechWeight": 0.0,
+  "method": "per-frame duration-aware smooth coarticulation, restrained smile, asymmetric eyelid amplitude",
+  "audioSource": "offline rig validation only; Qwen TTS is not connected",
+  "productionCloudConnected": false
+}

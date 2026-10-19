@@ -1,0 +1,12 @@
+{
+  "method": "smooth lower-profile taper preserving scalp roots",
+  "maximumRearReductionMeters": 0.027,
+  "maximumFrontRetractionMeters": 0.01,
+  "blendStartRestZ": 1.535,
+  "blendEndRestZ": 1.39,
+  "modifiedObjects": {
+    "Examiner_Hair": 112860,
+    "Examiner_HairStrands": 468240
+  },
+  "rootCapUnchanged": true
+}

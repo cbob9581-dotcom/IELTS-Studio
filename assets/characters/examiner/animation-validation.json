@@ -1,0 +1,28 @@
+{
+  "purpose": "offline rig validation only; Qwen TTS is not connected",
+  "voice": "Microsoft Zira Desktop",
+  "sampleRate": 16000,
+  "durationSeconds": 6.06,
+  "fps": 24,
+  "frames": [
+    1,
+    147
+  ],
+  "audio": "assets/audio/rig-test.wav",
+  "visemeEvents": 51,
+  "bones": 163,
+  "microsoftVisemes": 22,
+  "arkitControls": 52,
+  "meshShapeKeys": {
+    "Examiner_Body": 99,
+    "Examiner_Clothes": 1,
+    "Examiner_Eyebrows": 32,
+    "Examiner_Eyelashes": 26,
+    "Examiner_Eyes": 9,
+    "Examiner_Hair": 1,
+    "Examiner_Shoes": 1,
+    "Examiner_Teeth": 20,
+    "Examiner_Tongue": 21
+  },
+  "cloudTtsConnected": false
+}

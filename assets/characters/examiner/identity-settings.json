@@ -1,0 +1,67 @@
+{
+  "macro": {
+    "gender": 0.0,
+    "age": 0.6,
+    "muscle": 0.3,
+    "weight": 0.43,
+    "proportions": 0.55,
+    "height": 0.49,
+    "cupsize": 0.5,
+    "firmness": 0.5,
+    "race": {
+      "caucasian": 1.0,
+      "asian": 0.0,
+      "african": 0.0
+    }
+  },
+  "targets": [
+    [
+      "head/head-oval.target.gz",
+      0.55
+    ],
+    [
+      "chin/chin-width-decr.target.gz",
+      0.38
+    ],
+    [
+      "chin/chin-bones-decr.target.gz",
+      0.5
+    ],
+    [
+      "mouth/mouth-upperlip-volume-incr.target.gz",
+      0.4
+    ],
+    [
+      "mouth/mouth-lowerlip-volume-incr.target.gz",
+      0.28
+    ],
+    [
+      "eyebrows/eyebrows-angle-up.target.gz",
+      0.16
+    ],
+    [
+      "eyebrows/eyebrows-trans-up.target.gz",
+      0.08
+    ],
+    [
+      "cheek/l-cheek-volume-incr.target.gz",
+      0.16
+    ],
+    [
+      "cheek/r-cheek-volume-incr.target.gz",
+      0.16
+    ],
+    [
+      "cheek/l-cheek-bones-incr.target.gz",
+      0.1
+    ],
+    [
+      "cheek/r-cheek-bones-incr.target.gz",
+      0.1
+    ],
+    [
+      "nose/nose-width1-decr.target.gz",
+      0.14
+    ]
+  ]
+}

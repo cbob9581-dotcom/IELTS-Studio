@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "id": "dev-reading",
+  "version": 1,
+  "title": "开发验证卷 · 城市能源",
+  "testType": "academic",
+  "status": "ready",
+  "provenance": {
+    "kind": "developer_fixture",
+    "source": "原创微型开发素材；非正式 IELTS 试卷"
+  },
+  "assets": [],
+  "sections": [
+    {
+      "section": "reading",
+      "title": "Urban energy",
+      "durationMs": 600000,
+      "timingSource": "开发训练时长 10 分钟",
+      "paragraphs": [
+        {
+          "id": "p1",
+          "part": 1,
+          "text": "The city installed solar panels on public buildings. Batteries store surplus power for evening use."
+        }
+      ],
+      "questions": [
+        {
+          "id": "r1",
+          "number": 1,
+          "kind": "gap_fill",
+          "part": 1,
+          "points": 1,
+          "prompt": "Complete with ONE WORD: The city installed _____ panels.",
+          "answer": {
+            "accepted": ["solar"],
+            "caseSensitive": false,
+            "maxWords": 1
+          },
+          "evidence": ["p1: solar panels"]
+        }
+      ]
+    }
+  ]
+}

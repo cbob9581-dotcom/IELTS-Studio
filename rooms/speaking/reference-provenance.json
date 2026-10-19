@@ -1,0 +1,16 @@
+{
+  "examiner": {
+    "generator": "built-in image_gen",
+    "source": "images/examiner-reference.png",
+    "promptFile": "images/examiner-reference-prompt.txt",
+    "role": "visual reference only, not 3D asset or rig",
+    "approved": false
+  },
+  "furniture": {
+    "generator": "Blender procedural geometry",
+    "sources": [
+      "images/desk-reference.png",
+      "images/chair-reference.png"
+    ]
+  }
+}

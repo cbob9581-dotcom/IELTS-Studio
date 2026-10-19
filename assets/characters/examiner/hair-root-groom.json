@@ -1,0 +1,10 @@
+{
+  "rootBedVertices": 4097,
+  "rootBedConnectedCrown": true,
+  "physicalStrands": 6840,
+  "flyaways": 60,
+  "groomMeshVertices": 468240,
+  "hairPhysics": false,
+  "runtimeOptimizationPending": true,
+  "source": "Original procedural root bed and physical strand overlay"
+}

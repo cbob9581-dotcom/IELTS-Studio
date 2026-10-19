@@ -1,0 +1,8 @@
+{
+  "method": "pose-specific inverse-skinning garment contact corrective",
+  "seatTopMeters": 0.4925000071525574,
+  "contactGapMeters": 0.002,
+  "correctedVertexOperations": 597,
+  "maximumOriginalPenetrationMeters": 0.15080850911140442,
+  "scope": "seated examiner pose, not general cloth physics"
+}

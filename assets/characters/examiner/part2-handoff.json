@@ -1,0 +1,75 @@
+{
+  "scene": "IELTS_Part2_Handoff",
+  "fps": 24,
+  "frames": 336,
+  "durationSeconds": 14,
+  "events": [
+    {
+      "frame": 45,
+      "event": "attach",
+      "prop": "card",
+      "hand": "R"
+    },
+    {
+      "frame": 91,
+      "event": "release",
+      "prop": "card",
+      "hand": "R"
+    },
+    {
+      "frame": 97,
+      "event": "settled",
+      "prop": "card"
+    },
+    {
+      "frame": 137,
+      "event": "attach",
+      "prop": "paper",
+      "hand": "L"
+    },
+    {
+      "frame": 179,
+      "event": "release",
+      "prop": "paper",
+      "hand": "L"
+    },
+    {
+      "frame": 185,
+      "event": "settled",
+      "prop": "paper"
+    },
+    {
+      "frame": 219,
+      "event": "attach",
+      "prop": "pen",
+      "hand": "L"
+    },
+    {
+      "frame": 259,
+      "event": "release",
+      "prop": "pen",
+      "hand": "L"
+    },
+    {
+      "frame": 265,
+      "event": "settled",
+      "prop": "pen"
+    },
+    {
+      "frame": 289,
+      "event": "preparation_ready"
+    }
+  ],
+  "maxRequestedReachBeyondArmMeters": 0,
+  "audio": "silent choreography preview; production cloud speech not connected",
+  "topic": "original practice prompt, not an official test item",
+  "runtimeExported": false,
+  "action": "Part2_Card_Paper_Pen_Handoff",
+  "cameraLensMm": 38.0,
+  "props": {
+    "card": "P2_TopicCard",
+    "paper": "P2_BlankPaper",
+    "pen": "P2_Pen"
+  },
+  "readinessSemantics": "props ready; application must also await instruction audio completion before starting preparation timer"
+}

@@ -1,0 +1,35 @@
+{
+  "schema": "game-room.milestone-reviews.v1",
+  "roomId": "speaking",
+  "function": {
+    "status": "approved",
+    "approvedBy": "user in chat",
+    "approvedAt": "2026-10-15T12:41:24.040447+00:00",
+    "evidence": [
+      "renders/layout-production.png",
+      "renders/layout-overview.png",
+      "plans/floor-plan.png",
+      "plans/ceiling-plan.png",
+      "images/examiner-reference.png",
+      "masks/opening-contact-sheet.png"
+    ],
+    "strangestElement": "Neutral articulated mannequin is visibly provisional; it promises only a scale envelope, not the final examiner.",
+    "notes": "User replied ok after reviewing layout preview and examiner reference. No paid asset generation approved or submitted."
+  },
+  "form": {
+    "status": "pending",
+    "approvedBy": "",
+    "approvedAt": "",
+    "evidence": [],
+    "strangestElement": "",
+    "notes": ""
+  },
+  "runtime": {
+    "status": "pending",
+    "approvedBy": "",
+    "approvedAt": "",
+    "evidence": [],
+    "strangestElement": "",
+    "notes": ""
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "IELTS Studio",
+  "version": "0.5.2",
+  "identifier": "local.ielts.studio",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "IELTS Studio · Academic",
+        "width": 1440,
+        "height": 940,
+        "minWidth": 1000,
+        "minHeight": 700,
+        "additionalBrowserArgs": "--force-high-performance-gpu"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src ipc: http://ipc.localhost blob:; object-src 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "shortDescription": "Academic IELTS study desktop",
+    "windows": {
+      "nsis": {
+        "languages": [
+          "SimpChinese",
+          "English"
+        ],
+        "displayLanguageSelector": true
+      }
+    },
+    "resources": {
+      "../../rooms/speaking/runtime/speaking-room.glb": "runtime/speaking/speaking-room.glb",
+      "../../rooms/speaking/runtime/manifest.json": "runtime/speaking/manifest.json",
+      "../notices/THIRD_PARTY_NOTICES.txt": "THIRD_PARTY_NOTICES.txt",
+      "../notices/ASSET-NOTICES.md": "ASSET-NOTICES.md"
+    }
+  }
+}

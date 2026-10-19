@@ -1,0 +1,9 @@
+{
+  "frames": 147,
+  "maximumSpeechSum": 0.6200000271201134,
+  "minimumAnimatedWeight": 0.0,
+  "maximumAnimatedWeight": 0.9973008036613464,
+  "maximumSharedBlinkDifference": 0,
+  "endSpeechSum": 0.0,
+  "passed": true
+}

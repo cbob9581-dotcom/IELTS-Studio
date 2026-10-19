@@ -1,0 +1,43 @@
+{
+  "IELTS_Wall_West": {
+    "nonManifoldEdges": 0,
+    "openingId": "W01"
+  },
+  "IELTS_Wall_East": {
+    "nonManifoldEdges": 0,
+    "openingId": "D01"
+  },
+  "desk": {
+    "topHeight": 0.7399999499320984,
+    "dimensions": [
+      1.399999976158142,
+      0.75,
+      0.054999999701976776
+    ]
+  },
+  "legGroundMin": {
+    "IELTS_Desk_Leg": 0.0,
+    "IELTS_Desk_Leg.001": 0.0,
+    "IELTS_Desk_Leg.002": 0.0,
+    "IELTS_Desk_Leg.003": 0.0,
+    "IELTS_ExaminerChair_Leg": 0.0,
+    "IELTS_ExaminerChair_Leg.001": 0.0,
+    "IELTS_ExaminerChair_Leg.002": 0.0,
+    "IELTS_ExaminerChair_Leg.003": 0.0,
+    "IELTS_CandidateChair_Leg": 0.0,
+    "IELTS_CandidateChair_Leg.001": 0.0,
+    "IELTS_CandidateChair_Leg.002": 0.0,
+    "IELTS_CandidateChair_Leg.003": 0.0
+  },
+  "paths": {
+    "activeFile": "D:\\雅思\\blender\\speaking_layout.blend",
+    "render": "D:\\雅思\\rooms\\speaking\\renders\\layout-production.png",
+    "allInsideProject": true
+  },
+  "character": {
+    "stage": "layout proxy only",
+    "armatures": 0,
+    "finalCharacterReady": false
+  },
+  "originalScenePreserved": true
+}

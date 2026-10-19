@@ -1,0 +1,558 @@
+{
+  "tableTop": 0.7399999499320984,
+  "frames": [
+    {
+      "frame": 1,
+      "L": {
+        "clearanceMeters": -0.004762768745422363,
+        "penetratingVertices": 18
+      },
+      "R": {
+        "clearanceMeters": -0.004762768745422363,
+        "penetratingVertices": 18
+      }
+    },
+    {
+      "frame": 4,
+      "L": {
+        "clearanceMeters": -0.004964351654052734,
+        "penetratingVertices": 20
+      },
+      "R": {
+        "clearanceMeters": -0.004964351654052734,
+        "penetratingVertices": 20
+      }
+    },
+    {
+      "frame": 7,
+      "L": {
+        "clearanceMeters": -0.00545656681060791,
+        "penetratingVertices": 29
+      },
+      "R": {
+        "clearanceMeters": -0.00545656681060791,
+        "penetratingVertices": 29
+      }
+    },
+    {
+      "frame": 10,
+      "L": {
+        "clearanceMeters": -0.0060710906982421875,
+        "penetratingVertices": 37
+      },
+      "R": {
+        "clearanceMeters": -0.0060710906982421875,
+        "penetratingVertices": 37
+      }
+    },
+    {
+      "frame": 13,
+      "L": {
+        "clearanceMeters": -0.00664067268371582,
+        "penetratingVertices": 43
+      },
+      "R": {
+        "clearanceMeters": -0.00664067268371582,
+        "penetratingVertices": 43
+      }
+    },
+    {
+      "frame": 16,
+      "L": {
+        "clearanceMeters": -0.007032155990600586,
+        "penetratingVertices": 49
+      },
+      "R": {
+        "clearanceMeters": -0.007032155990600586,
+        "penetratingVertices": 49
+      }
+    },
+    {
+      "frame": 19,
+      "L": {
+        "clearanceMeters": -0.0072553157806396484,
+        "penetratingVertices": 51
+      },
+      "R": {
+        "clearanceMeters": -0.0072553157806396484,
+        "penetratingVertices": 51
+      }
+    },
+    {
+      "frame": 22,
+      "L": {
+        "clearanceMeters": -0.007355928421020508,
+        "penetratingVertices": 52
+      },
+      "R": {
+        "clearanceMeters": -0.007355928421020508,
+        "penetratingVertices": 52
+      }
+    },
+    {
+      "frame": 25,
+      "L": {
+        "clearanceMeters": -0.00737917423248291,
+        "penetratingVertices": 52
+      },
+      "R": {
+        "clearanceMeters": -0.00737917423248291,
+        "penetratingVertices": 52
+      }
+    },
+    {
+      "frame": 28,
+      "L": {
+        "clearanceMeters": -0.00731968879699707,
+        "penetratingVertices": 52
+      },
+      "R": {
+        "clearanceMeters": -0.00731968879699707,
+        "penetratingVertices": 52
+      }
+    },
+    {
+      "frame": 31,
+      "L": {
+        "clearanceMeters": -0.007149219512939453,
+        "penetratingVertices": 51
+      },
+      "R": {
+        "clearanceMeters": -0.007149219512939453,
+        "penetratingVertices": 51
+      }
+    },
+    {
+      "frame": 34,
+      "L": {
+        "clearanceMeters": -0.006882071495056152,
+        "penetratingVertices": 47
+      },
+      "R": {
+        "clearanceMeters": -0.006882071495056152,
+        "penetratingVertices": 47
+      }
+    },
+    {
+      "frame": 37,
+      "L": {
+        "clearanceMeters": -0.006530880928039551,
+        "penetratingVertices": 41
+      },
+      "R": {
+        "clearanceMeters": -0.006530880928039551,
+        "penetratingVertices": 41
+      }
+    },
+    {
+      "frame": 40,
+      "L": {
+        "clearanceMeters": -0.006110429763793945,
+        "penetratingVertices": 37
+      },
+      "R": {
+        "clearanceMeters": -0.006110429763793945,
+        "penetratingVertices": 37
+      }
+    },
+    {
+      "frame": 43,
+      "L": {
+        "clearanceMeters": -0.005638480186462402,
+        "penetratingVertices": 30
+      },
+      "R": {
+        "clearanceMeters": -0.005638480186462402,
+        "penetratingVertices": 30
+      }
+    },
+    {
+      "frame": 46,
+      "L": {
+        "clearanceMeters": -0.0051316022872924805,
+        "penetratingVertices": 21
+      },
+      "R": {
+        "clearanceMeters": -0.0051316022872924805,
+        "penetratingVertices": 21
+      }
+    },
+    {
+      "frame": 49,
+      "L": {
+        "clearanceMeters": -0.004610300064086914,
+        "penetratingVertices": 16
+      },
+      "R": {
+        "clearanceMeters": -0.004610300064086914,
+        "penetratingVertices": 16
+      }
+    },
+    {
+      "frame": 52,
+      "L": {
+        "clearanceMeters": -0.004091501235961914,
+        "penetratingVertices": 13
+      },
+      "R": {
+        "clearanceMeters": -0.004091501235961914,
+        "penetratingVertices": 13
+      }
+    },
+    {
+      "frame": 55,
+      "L": {
+        "clearanceMeters": -0.0035985708236694336,
+        "penetratingVertices": 11
+      },
+      "R": {
+        "clearanceMeters": -0.0035985708236694336,
+        "penetratingVertices": 11
+      }
+    },
+    {
+      "frame": 58,
+      "L": {
+        "clearanceMeters": -0.003154277801513672,
+        "penetratingVertices": 8
+      },
+      "R": {
+        "clearanceMeters": -0.003154277801513672,
+        "penetratingVertices": 8
+      }
+    },
+    {
+      "frame": 61,
+      "L": {
+        "clearanceMeters": -0.0027812719345092773,
+        "penetratingVertices": 7
+      },
+      "R": {
+        "clearanceMeters": -0.0027812719345092773,
+        "penetratingVertices": 7
+      }
+    },
+    {
+      "frame": 64,
+      "L": {
+        "clearanceMeters": -0.0024979114532470703,
+        "penetratingVertices": 5
+      },
+      "R": {
+        "clearanceMeters": -0.0024979114532470703,
+        "penetratingVertices": 5
+      }
+    },
+    {
+      "frame": 67,
+      "L": {
+        "clearanceMeters": -0.0023032426834106445,
+        "penetratingVertices": 5
+      },
+      "R": {
+        "clearanceMeters": -0.0023032426834106445,
+        "penetratingVertices": 5
+      }
+    },
+    {
+      "frame": 70,
+      "L": {
+        "clearanceMeters": -0.002190709114074707,
+        "penetratingVertices": 5
+      },
+      "R": {
+        "clearanceMeters": -0.002190709114074707,
+        "penetratingVertices": 5
+      }
+    },
+    {
+      "frame": 73,
+      "L": {
+        "clearanceMeters": -0.0021543502807617188,
+        "penetratingVertices": 4
+      },
+      "R": {
+        "clearanceMeters": -0.0021543502807617188,
+        "penetratingVertices": 4
+      }
+    },
+    {
+      "frame": 76,
+      "L": {
+        "clearanceMeters": -0.0022259950637817383,
+        "penetratingVertices": 5
+      },
+      "R": {
+        "clearanceMeters": -0.0022259950637817383,
+        "penetratingVertices": 5
+      }
+    },
+    {
+      "frame": 79,
+      "L": {
+        "clearanceMeters": -0.0024242401123046875,
+        "penetratingVertices": 5
+      },
+      "R": {
+        "clearanceMeters": -0.0024242401123046875,
+        "penetratingVertices": 5
+      }
+    },
+    {
+      "frame": 82,
+      "L": {
+        "clearanceMeters": -0.0027266740798950195,
+        "penetratingVertices": 7
+      },
+      "R": {
+        "clearanceMeters": -0.0027266740798950195,
+        "penetratingVertices": 7
+      }
+    },
+    {
+      "frame": 85,
+      "L": {
+        "clearanceMeters": -0.003110051155090332,
+        "penetratingVertices": 8
+      },
+      "R": {
+        "clearanceMeters": -0.003110051155090332,
+        "penetratingVertices": 8
+      }
+    },
+    {
+      "frame": 88,
+      "L": {
+        "clearanceMeters": -0.0035523176193237305,
+        "penetratingVertices": 11
+      },
+      "R": {
+        "clearanceMeters": -0.0035523176193237305,
+        "penetratingVertices": 11
+      }
+    },
+    {
+      "frame": 91,
+      "L": {
+        "clearanceMeters": -0.004036664962768555,
+        "penetratingVertices": 13
+      },
+      "R": {
+        "clearanceMeters": -0.004036664962768555,
+        "penetratingVertices": 13
+      }
+    },
+    {
+      "frame": 94,
+      "L": {
+        "clearanceMeters": -0.004547238349914551,
+        "penetratingVertices": 16
+      },
+      "R": {
+        "clearanceMeters": -0.004547238349914551,
+        "penetratingVertices": 16
+      }
+    },
+    {
+      "frame": 97,
+      "L": {
+        "clearanceMeters": -0.005068302154541016,
+        "penetratingVertices": 21
+      },
+      "R": {
+        "clearanceMeters": -0.005068302154541016,
+        "penetratingVertices": 21
+      }
+    },
+    {
+      "frame": 100,
+      "L": {
+        "clearanceMeters": -0.005581855773925781,
+        "penetratingVertices": 30
+      },
+      "R": {
+        "clearanceMeters": -0.005581855773925781,
+        "penetratingVertices": 30
+      }
+    },
+    {
+      "frame": 103,
+      "L": {
+        "clearanceMeters": -0.006065249443054199,
+        "penetratingVertices": 37
+      },
+      "R": {
+        "clearanceMeters": -0.006065249443054199,
+        "penetratingVertices": 37
+      }
+    },
+    {
+      "frame": 106,
+      "L": {
+        "clearanceMeters": -0.006493330001831055,
+        "penetratingVertices": 40
+      },
+      "R": {
+        "clearanceMeters": -0.006493330001831055,
+        "penetratingVertices": 40
+      }
+    },
+    {
+      "frame": 109,
+      "L": {
+        "clearanceMeters": -0.00684046745300293,
+        "penetratingVertices": 46
+      },
+      "R": {
+        "clearanceMeters": -0.00684046745300293,
+        "penetratingVertices": 46
+      }
+    },
+    {
+      "frame": 112,
+      "L": {
+        "clearanceMeters": -0.007088065147399902,
+        "penetratingVertices": 49
+      },
+      "R": {
+        "clearanceMeters": -0.007088065147399902,
+        "penetratingVertices": 49
+      }
+    },
+    {
+      "frame": 115,
+      "L": {
+        "clearanceMeters": -0.007245421409606934,
+        "penetratingVertices": 51
+      },
+      "R": {
+        "clearanceMeters": -0.007245421409606934,
+        "penetratingVertices": 51
+      }
+    },
+    {
+      "frame": 118,
+      "L": {
+        "clearanceMeters": -0.007328391075134277,
+        "penetratingVertices": 52
+      },
+      "R": {
+        "clearanceMeters": -0.007328391075134277,
+        "penetratingVertices": 52
+      }
+    },
+    {
+      "frame": 121,
+      "L": {
+        "clearanceMeters": -0.007352590560913086,
+        "penetratingVertices": 52
+      },
+      "R": {
+        "clearanceMeters": -0.007352590560913086,
+        "penetratingVertices": 52
+      }
+    },
+    {
+      "frame": 124,
+      "L": {
+        "clearanceMeters": -0.007294297218322754,
+        "penetratingVertices": 52
+      },
+      "R": {
+        "clearanceMeters": -0.007294297218322754,
+        "penetratingVertices": 52
+      }
+    },
+    {
+      "frame": 127,
+      "L": {
+        "clearanceMeters": -0.0071086883544921875,
+        "penetratingVertices": 51
+      },
+      "R": {
+        "clearanceMeters": -0.0071086883544921875,
+        "penetratingVertices": 51
+      }
+    },
+    {
+      "frame": 130,
+      "L": {
+        "clearanceMeters": -0.006780385971069336,
+        "penetratingVertices": 45
+      },
+      "R": {
+        "clearanceMeters": -0.006780385971069336,
+        "penetratingVertices": 45
+      }
+    },
+    {
+      "frame": 133,
+      "L": {
+        "clearanceMeters": -0.0062940120697021484,
+        "penetratingVertices": 40
+      },
+      "R": {
+        "clearanceMeters": -0.0062940120697021484,
+        "penetratingVertices": 40
+      }
+    },
+    {
+      "frame": 136,
+      "L": {
+        "clearanceMeters": -0.005662322044372559,
+        "penetratingVertices": 32
+      },
+      "R": {
+        "clearanceMeters": -0.005662322044372559,
+        "penetratingVertices": 32
+      }
+    },
+    {
+      "frame": 139,
+      "L": {
+        "clearanceMeters": -0.005014657974243164,
+        "penetratingVertices": 20
+      },
+      "R": {
+        "clearanceMeters": -0.005014657974243164,
+        "penetratingVertices": 20
+      }
+    },
+    {
+      "frame": 142,
+      "L": {
+        "clearanceMeters": -0.004509925842285156,
+        "penetratingVertices": 15
+      },
+      "R": {
+        "clearanceMeters": -0.004509925842285156,
+        "penetratingVertices": 15
+      }
+    },
+    {
+      "frame": 145,
+      "L": {
+        "clearanceMeters": -0.0043065547943115234,
+        "penetratingVertices": 15
+      },
+      "R": {
+        "clearanceMeters": -0.0043065547943115234,
+        "penetratingVertices": 15
+      }
+    },
+    {
+      "frame": 147,
+      "L": {
+        "clearanceMeters": -0.0043065547943115234,
+        "penetratingVertices": 15
+      },
+      "R": {
+        "clearanceMeters": -0.0043065547943115234,
+        "penetratingVertices": 15
+      }
+    }
+  ],
+  "minimumClearanceMeters": -0.00737917423248291,
+  "penetratingVertices": 2864,
+  "passed": false
+}

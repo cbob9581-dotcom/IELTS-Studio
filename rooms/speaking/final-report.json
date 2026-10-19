@@ -1,0 +1,103 @@
+{
+  "schema": "game-room.room-final-report.v1",
+  "roomId": "speaking",
+  "gates": {
+    "function": false,
+    "form": false,
+    "runtime": false
+  },
+  "formChecks": {
+    "floorPlanParity": false,
+    "primaryArrival": false,
+    "symmetry": false,
+    "shell": false,
+    "manifold": false,
+    "booleans": false,
+    "collisions": false,
+    "support": false,
+    "attachmentOrientation": false,
+    "ceilingAttachmentOrientation": false,
+    "seatingOrientation": false,
+    "focalDistribution": false,
+    "heroClearance": false,
+    "colonnades": false,
+    "screenClearance": false,
+    "scale": false,
+    "camera": false,
+    "ceilingCoverage": false,
+    "environmentCoverage": false,
+    "provenance": false
+  },
+  "reviewRenders": {
+    "corners": [
+      "renders/form-corner-1.png",
+      "renders/form-corner-2.png",
+      "renders/form-corner-3.png",
+      "renders/form-corner-4.png"
+    ],
+    "ceiling": [
+      "renders/form-ceiling-up.png",
+      "renders/form-ceiling-oblique-a.png",
+      "renders/form-ceiling-oblique-b.png"
+    ],
+    "production": "renders/form-production-v4.png",
+    "face": [
+      "renders/face-neutral-v4.png",
+      "renders/face-vowel-v4.png",
+      "renders/face-blink-v4.png"
+    ],
+    "hair": "renders/hair-eight-views.png",
+    "hands": [
+      "renders/hands-table-v4.png",
+      "renders/hands-table-side-v4.png"
+    ],
+    "crownComparison": "renders/crown-continuity-before-after.png",
+    "seat": [
+      "renders/seat-before-side.png",
+      "renders/seat-after-side.png",
+      "renders/seat-after-rear.png"
+    ],
+    "profileComparison": "renders/hair-profile-before-after-v7.png"
+  },
+  "runtimeChecks": {
+    "vlow": false,
+    "textureTiers": false,
+    "lightmap": false,
+    "lightingManifest": false,
+    "performance": false,
+    "browserCapture": "",
+    "errors": []
+  },
+  "postmortem": {
+    "observations": [],
+    "corrections": [],
+    "remainingRisks": []
+  },
+  "proposedLessons": [],
+  "notes": [
+    "Current review uses original project-authored hair geometry; old Daisy hair is archived.",
+    "Cloud ASR, LLM and Qwen TTS are not connected. Fixed local speech is only a rig-validation fixture.",
+    "Hair and character Form approval remain pending; runtime is not exported.",
+    "v5/v6 movies predate final depth refinement; current review uses v7 side and multi-angle stills."
+  ],
+  "appearanceRevision": {
+    "id": "profile-depth-v7",
+    "status": "pending user visual review",
+    "checks": [
+      "seat-contact-inspection.json",
+      "face-evaluated-inspection.json",
+      "hair-binding-inspection.json"
+    ],
+    "runtimeExported": false
+  },
+  "part2Handoff": {
+    "scene": "IELTS_Part2_Handoff",
+    "action": "Part2_Card_Paper_Pen_Handoff",
+    "movie": "renders/part2-handoff-preview.mp4",
+    "storyboard": "renders/part2-handoff-storyboard.png",
+    "geometryCheck": "assets/characters/examiner/part2-handoff-inspection.json",
+    "status": "Blender choreography preview; visual approval pending",
+    "cloudSpeechConnected": false,
+    "runtimeExported": false
+  }
+}

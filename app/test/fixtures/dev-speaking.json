@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "id": "dev-speaking",
+  "version": 1,
+  "title": "开发验证卷 · 口语提示",
+  "testType": "academic",
+  "status": "ready",
+  "provenance": {
+    "kind": "developer_fixture",
+    "source": "原创微型开发素材；非正式 IELTS 试卷"
+  },
+  "assets": [],
+  "sections": [
+    {
+      "section": "speaking",
+      "title": "Speaking preview",
+      "durationMs": 600000,
+      "timingSource": "开发训练时长 10 分钟",
+      "paragraphs": [],
+      "questions": [
+        {
+          "id": "s1",
+          "number": 1,
+          "kind": "speaking_prompt",
+          "part": 1,
+          "points": 0,
+          "prompt": "Tell me about the places where people study.",
+          "evidence": []
+        },
+        {
+          "id": "s2",
+          "number": 2,
+          "kind": "speaking_prompt",
+          "part": 2,
+          "points": 0,
+          "prompt": "Describe a place where you enjoy studying. Say where it is, what it looks like, how often you go there, and explain why you like it.",
+          "evidence": []
+        },
+        {
+          "id": "s3",
+          "number": 3,
+          "kind": "speaking_prompt",
+          "part": 3,
+          "points": 0,
+          "prompt": "Tell me about the places where people study.",
+          "evidence": []
+        }
+      ]
+    }
+  ]
+}

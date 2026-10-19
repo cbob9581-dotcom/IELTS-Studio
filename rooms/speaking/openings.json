@@ -1,0 +1,46 @@
+{
+  "schema": "game-room.opening-schedule.v1",
+  "roomId": "speaking",
+  "primaryArrival": {
+    "openingId": "D01",
+    "exception": "Menu spawns seated candidate; ordinary 0.9m closed door appropriate to quiet exam room, no walking gameplay"
+  },
+  "openings": [
+    {
+      "id": "D01",
+      "wall": "IELTS_Wall_East",
+      "widthMeters": 0.9,
+      "heightMeters": 2.1,
+      "thresholdMeters": 0,
+      "depthMeters": 0.2,
+      "destination": "backed corridor",
+      "center": [
+        2.1,
+        -1.55,
+        1.05
+      ],
+      "kind": "door",
+      "mask": "masks/D01.png",
+      "cutter": "masks/D01.json",
+      "approved": false
+    },
+    {
+      "id": "W01",
+      "wall": "IELTS_Wall_West",
+      "widthMeters": 1.8,
+      "heightMeters": 1.3,
+      "sillMeters": 1.0,
+      "depthMeters": 0.2,
+      "destination": "exterior lightwell",
+      "center": [
+        -2.1,
+        0.35,
+        1.65
+      ],
+      "kind": "window",
+      "mask": "masks/W01.png",
+      "cutter": "masks/W01.json",
+      "approved": false
+    }
+  ]
+}

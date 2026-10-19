@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "id": "dev-listening",
+  "version": 1,
+  "title": "开发验证卷 · 听音设备测试",
+  "testType": "academic",
+  "status": "ready",
+  "provenance": {
+    "kind": "developer_fixture",
+    "source": "原创微型开发素材；非正式 IELTS 试卷"
+  },
+  "assets": [
+    {
+      "id": "test-tones",
+      "path": "media/three-test-tones.wav",
+      "sha256": "ec295073b27d11319238072e2f9db432c56aad5dfc0cffd0bcd553b001e1734f",
+      "mediaType": "audio/wav"
+    }
+  ],
+  "sections": [
+    {
+      "section": "listening",
+      "title": "Audio device check — test tones only",
+      "durationMs": 180000,
+      "timingSource": "开发设备测试 3 分钟，不是完整 IELTS 听力",
+      "paragraphs": [
+        {
+          "id": "l-p1",
+          "part": 1,
+          "text": "This developer audio contains test tones, not IELTS speech. Count the tones to check audio playback and answer saving."
+        }
+      ],
+      "audioAssetIds": ["test-tones"],
+      "questions": [
+        {
+          "id": "l1",
+          "number": 1,
+          "kind": "short_answer",
+          "part": 1,
+          "points": 1,
+          "prompt": "How many test tones do you hear? Write ONE NUMBER.",
+          "answer": {
+            "accepted": ["3"],
+            "caseSensitive": false,
+            "maxWords": 1,
+            "maxNumbers": 1
+          },
+          "evidence": ["three-test-tones.wav: 0.4s, 1.2s, 2.0s"]
+        }
+      ]
+    }
+  ]
+}

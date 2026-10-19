@@ -1,0 +1,166 @@
+{
+  "schema": "game-room.prop-manifest.v1",
+  "roomId": "speaking",
+  "generation": {
+    "provider": "none-procedural",
+    "apiModel": null,
+    "pricingSource": "https://docs.meshy.ai/en/api/pricing",
+    "pricingVerifiedAt": null,
+    "creditsPerTexturedTask": 0,
+    "hardCreditCeiling": 0,
+    "maxChargedAttemptsPerAsset": 2,
+    "notes": "No Meshy submissions: zero paid budget; furniture is authored procedurally. Stock validator assumes a positive Meshy budget and will report this intentional incompatibility."
+  },
+  "assets": [
+    {
+      "id": "desk",
+      "function": "Conversation surface",
+      "description": "Function-stage procedural design",
+      "class": "reusable",
+      "dimensionsMeters": [
+        1.4,
+        0.75,
+        0.74
+      ],
+      "attachmentFace": "floor",
+      "semanticFront": "negative-y",
+      "intendedInstances": 1,
+      "targetPolycount": 3000,
+      "rejectionCriteria": [
+        "Wrong physical scale or facing",
+        "Floating support or visible intersections",
+        "Not matching approved design"
+      ],
+      "image": {
+        "source": "images/desk-reference.png",
+        "generator": "Blender actual geometry render",
+        "prompt": "Procedural geometry, not AI generation",
+        "approved": true,
+        "approvedBy": "user in chat: layout and examiner appearance"
+      },
+      "attempts": [],
+      "productionMethod": "Blender procedural",
+      "license": "source-authored"
+    },
+    {
+      "id": "chair",
+      "function": "Seating facing conversation partner",
+      "description": "Function-stage procedural design",
+      "class": "reusable",
+      "dimensionsMeters": [
+        0.48,
+        0.49,
+        0.975
+      ],
+      "attachmentFace": "floor",
+      "semanticFront": "negative-y",
+      "intendedInstances": 2,
+      "targetPolycount": 3000,
+      "rejectionCriteria": [
+        "Wrong physical scale or facing",
+        "Floating support or visible intersections",
+        "Not matching approved design"
+      ],
+      "image": {
+        "source": "images/chair-reference.png",
+        "generator": "Blender actual geometry render",
+        "prompt": "Procedural geometry, not AI generation",
+        "approved": true,
+        "approvedBy": "user in chat: layout and examiner appearance"
+      },
+      "attempts": [],
+      "productionMethod": "Blender procedural",
+      "license": "source-authored"
+    },
+    {
+      "id": "stationery",
+      "function": "Exam materials and recording props",
+      "description": "Function-stage procedural design",
+      "class": "reusable",
+      "dimensionsMeters": [
+        1.08,
+        0.35,
+        0.04
+      ],
+      "attachmentFace": "freestanding",
+      "semanticFront": "negative-y",
+      "intendedInstances": 1,
+      "targetPolycount": 3000,
+      "rejectionCriteria": [
+        "Wrong physical scale or facing",
+        "Floating support or visible intersections",
+        "Not matching approved design"
+      ],
+      "image": {
+        "source": "renders/layout-production.png",
+        "generator": "Blender actual geometry render",
+        "prompt": "Procedural geometry, not AI generation",
+        "approved": true,
+        "approvedBy": "user in chat: layout and examiner appearance"
+      },
+      "attempts": [],
+      "productionMethod": "Blender procedural",
+      "license": "source-authored"
+    },
+    {
+      "id": "examiner-envelope",
+      "function": "Reserved animated examiner envelope; layout proxy only",
+      "description": "Fictional adult white female examiner, blonde short hair, formal charcoal suit. Current geometry is an unrigged massing proxy.",
+      "class": "hero",
+      "dimensionsMeters": [
+        0.65,
+        0.75,
+        1.55
+      ],
+      "attachmentFace": "floor",
+      "semanticFront": "negative-y",
+      "intendedInstances": 1,
+      "targetPolycount": 120000,
+      "rejectionCriteria": [
+        "Wrong physical scale or facing",
+        "Floating support or visible intersections",
+        "Not matching approved design"
+      ],
+      "image": {
+        "source": "images/examiner-reference.png",
+        "generator": "built-in image_gen",
+        "prompt": "Full uncropped blonde adult female examiner, charcoal formal suit; see examiner-reference-prompt.txt",
+        "approved": true,
+        "approvedBy": "user in chat: layout and examiner appearance"
+      },
+      "attempts": [],
+      "productionMethod": "character-route-pending",
+      "license": "generated visual reference only; 3D model license pending"
+    },
+    {
+      "id": "ceiling-fixture",
+      "function": "Visible ceiling light support",
+      "description": "Function-stage procedural design",
+      "class": "reusable",
+      "dimensionsMeters": [
+        1.05,
+        0.45,
+        0.035
+      ],
+      "attachmentFace": "ceiling",
+      "semanticFront": "negative-z",
+      "intendedInstances": 1,
+      "targetPolycount": 3000,
+      "rejectionCriteria": [
+        "Wrong physical scale or facing",
+        "Floating support or visible intersections",
+        "Not matching approved design"
+      ],
+      "image": {
+        "source": "plans/ceiling-plan.png",
+        "generator": "Blender actual geometry render",
+        "prompt": "Procedural geometry, not AI generation",
+        "approved": false,
+        "approvedBy": ""
+      },
+      "attempts": [],
+      "productionMethod": "Blender procedural",
+      "license": "source-authored"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "framesDecoded": 336,
+  "fps": 24.0,
+  "durationSeconds": 14.0,
+  "width": 768,
+  "height": 432,
+  "bytes": 466842,
+  "maxMeanPixelChange": 1.2335149819958848,
+  "maxChangeFrame": 191,
+  "audio": "silent choreography preview",
+  "passed": true
+}

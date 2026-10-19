@@ -1,0 +1,63 @@
+{
+  "frames": [
+    {
+      "pose": "frame 1",
+      "errors": {
+        "Examiner_Hair": 2.457562461863554e-07,
+        "Examiner_HairStrands": 2.384185791015625e-07,
+        "Examiner_HairRootCap": 2.384185791015625e-07
+      }
+    },
+    {
+      "pose": "frame 15",
+      "errors": {
+        "Examiner_Hair": 2.4620758953479386e-07,
+        "Examiner_HairStrands": 2.4620758953479386e-07,
+        "Examiner_HairRootCap": 2.4586915969848633e-07
+      }
+    },
+    {
+      "pose": "frame 46",
+      "errors": {
+        "Examiner_Hair": 2.4586915969848633e-07,
+        "Examiner_HairStrands": 2.4620758953479386e-07,
+        "Examiner_HairRootCap": 2.4586915969848633e-07
+      }
+    },
+    {
+      "pose": "frame 110",
+      "errors": {
+        "Examiner_Hair": 3.625608998714816e-07,
+        "Examiner_HairStrands": 3.5762786865234375e-07,
+        "Examiner_HairRootCap": 2.4586915969848633e-07
+      }
+    },
+    {
+      "pose": "frame 147",
+      "errors": {
+        "Examiner_Hair": 2.4586915969848633e-07,
+        "Examiner_HairStrands": 2.4586915969848633e-07,
+        "Examiner_HairRootCap": 2.4578447942743725e-07
+      }
+    },
+    {
+      "pose": "head turn -20",
+      "errors": {
+        "Examiner_Hair": 2.384476811558792e-07,
+        "Examiner_HairStrands": 2.4586915969848633e-07,
+        "Examiner_HairRootCap": 2.457562461863554e-07
+      }
+    },
+    {
+      "pose": "head turn 20",
+      "errors": {
+        "Examiner_Hair": 1.341104507446289e-07,
+        "Examiner_HairStrands": 2.4576021668186855e-07,
+        "Examiner_HairRootCap": 2.4578447942743725e-07
+      }
+    }
+  ],
+  "maximumBindingErrorMeters": 3.625608998714816e-07,
+  "fullHeadWeights": true,
+  "passed": true
+}

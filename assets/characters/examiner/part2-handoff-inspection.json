@@ -1,0 +1,38 @@
+{
+  "frames": 336,
+  "tableTopMeters": 0.7399999499320984,
+  "handBelowTableVertices": 0,
+  "garmentTableIntersectionVertices": 0,
+  "minimumHandClearanceMeters": 0.0028021931648254395,
+  "minimumPropClearanceMeters": 0.0004000067710876465,
+  "maxAttachmentErrorMeters": 0,
+  "maxReleasedDriftMeters": 0,
+  "restingProps": {
+    "card": {
+      "bottomClearanceMeters": 0.0004000067710876465,
+      "center": [
+        -0.12999947369098663,
+        0.039998605847358704,
+        0.7409999966621399
+      ]
+    },
+    "paper": {
+      "bottomClearanceMeters": 0.0004500746726989746,
+      "center": [
+        0.1399996131658554,
+        0.05499984323978424,
+        0.7407000064849854
+      ]
+    },
+    "pen": {
+      "bottomClearanceMeters": 0.001000046730041504,
+      "center": [
+        0.18000014126300812,
+        0.1500002145767212,
+        0.7440000176429749
+      ]
+    }
+  },
+  "badFrames": [],
+  "passed": true
+}

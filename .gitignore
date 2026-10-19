@@ -1,0 +1,37 @@
+# Local credentials and configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local source material, imports, and verification work
+.tools/
+backups/
+dist/
+app/node_modules/
+app/dist/
+app/src-tauri/target/
+app/test-results/
+app/playwright-report/
+app/test/native/
+**/*.blend1
+assets/audio/rig-test.wav
+
+# Private screenshots and generated Blender review output
+rooms/speaking/images/
+rooms/speaking/renders/
+rooms/speaking/masks/
+rooms/speaking/plans/*.png
+
+# Local run logs and test evidence are not project documentation
+docs/**
+!docs/
+!docs/听力音频使用与配置-0.5.2.md
+
+# One-off local review helpers point to personal test folders and screenshots
+tools/start-*-verification.ps1
+tools/stop-*-verification.ps1
+tools/compose_*.py

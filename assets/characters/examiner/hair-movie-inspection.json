@@ -1,0 +1,17 @@
+{
+  "file": "D:\\雅思\\rooms\\speaking\\renders\\rig-speech-preview-v4.mp4",
+  "frames": 147,
+  "fps": 24.0,
+  "width": 768,
+  "height": 432,
+  "bytes": 263153,
+  "aacTrackPresent": true,
+  "decodedFrames": [
+    1,
+    15,
+    46,
+    110,
+    147
+  ],
+  "audioPurpose": "offline rig fixture; not Qwen production voice"
+}

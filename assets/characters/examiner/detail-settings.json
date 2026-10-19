@@ -1,0 +1,8 @@
+{
+  "fiberSplines": 700,
+  "fiberMeshVertices": 70720,
+  "skinPoreReliefMeters": 9e-05,
+  "skinSubsurfaceScaleMeters": 0.003,
+  "lipTintMaxWeight": 0.24,
+  "appearanceStage": "review refinement v2"
+}

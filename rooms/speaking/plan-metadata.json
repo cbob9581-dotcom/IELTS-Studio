@@ -1,0 +1,36 @@
+{
+  "schema": "game-room.plan-metadata.v1",
+  "roomId": "speaking",
+  "style": "monochrome-engineering",
+  "projectionSource": "actual-meshes",
+  "layers": [
+    "lower-room",
+    "reflected-ceiling"
+  ],
+  "semanticLabelsOutsideImage": true,
+  "aiInspirationIncluded": false,
+  "aiInspirationReason": "",
+  "coverage": [
+    "room-outline",
+    "cutouts",
+    "openings",
+    "exterior-apron",
+    "main-sign",
+    "ingress-props",
+    "floor-markers",
+    "barriers",
+    "columns",
+    "circulation",
+    "placed-features"
+  ],
+  "coverageNotes": {
+    "main-sign": "not applicable: menu arrival directly to desk",
+    "floor-markers": "not applicable: no walking gameplay",
+    "barriers": "continuous room shell",
+    "columns": "none in this small room",
+    "exterior-apron": "backed corridor outside D01",
+    "circulation": "clear side aisles; seated runtime"
+  },
+  "sectionHeightMeters": 1.2,
+  "objectGeometry": "room-layout.json:geometryObjects"
+}

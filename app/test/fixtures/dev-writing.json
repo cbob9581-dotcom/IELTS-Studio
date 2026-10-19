@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "id": "dev-writing",
+  "version": 1,
+  "title": "开发验证卷 · 写作",
+  "testType": "academic",
+  "status": "ready",
+  "provenance": {
+    "kind": "developer_fixture",
+    "source": "原创微型开发素材；非正式 IELTS 试卷"
+  },
+  "assets": [
+    {
+      "id": "visitors-chart",
+      "path": "media/library-visitors.png",
+      "sha256": "d5c82fde31651493bb340cc9f0f31bacdfca3869d3ebd4215c7a9ff9da38992a",
+      "mediaType": "image/png"
+    }
+  ],
+  "sections": [
+    {
+      "section": "writing",
+      "title": "Writing practice",
+      "durationMs": 600000,
+      "timingSource": "开发训练时长 10 分钟",
+      "paragraphs": [],
+      "questions": [
+        {
+          "id": "w1",
+          "number": 1,
+          "kind": "writing_task",
+          "part": 1,
+          "points": 0,
+          "prompt": "The following figures show library visitors: Monday 120, Tuesday 160, Wednesday 140, Thursday 180, Friday 220. Summarise the information and make comparisons where relevant.",
+          "minWords": 150,
+          "evidence": [],
+          "imageAssetId": "visitors-chart"
+        },
+        {
+          "id": "w2",
+          "number": 2,
+          "kind": "writing_task",
+          "part": 2,
+          "points": 0,
+          "prompt": "Some people think public libraries are no longer necessary. To what extent do you agree or disagree?",
+          "minWords": 250,
+          "evidence": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "bones": 163,
+  "deformBones": 163,
+  "visibleBodyVertices": 13380,
+  "unweightedVisibleBodyVertices": 0,
+  "finalFrameSpeechWeights": {},
+  "blinkFrame46": {
+    "eyeBlinkLeft": 0.95,
+    "eyeBlinkRight": 0.95
+  },
+  "speechFrame15": {
+    "k_g_ng_20": 0.325,
+    "y_iy_ih_ix_06": 0.325
+  },
+  "savedFile": "D:\\雅思\\blender\\speaking_room.blend",
+  "missingFileImages": [],
+  "packedImages": 15
+}

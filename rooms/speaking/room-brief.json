@@ -1,0 +1,82 @@
+{
+  "schema": "game-room.room-brief.v1",
+  "roomId": "speaking",
+  "family": "custom",
+  "purpose": "Seated face-to-face IELTS speaking practice",
+  "runtimeSurface": "Windows desktop; engine selected after character validation",
+  "boundsMeters": [
+    4,
+    5,
+    2.8
+  ],
+  "hero": {
+    "id": "examiner",
+    "role": "speaking examiner; proxy in layout only",
+    "reservedBoundsMeters": [
+      0.65,
+      0.75,
+      1.55
+    ]
+  },
+  "symmetry": {
+    "mode": "bilateral",
+    "order": 2,
+    "appliesTo": [
+      "architecture",
+      "barriers",
+      "circulation",
+      "repeatedProps"
+    ],
+    "exceptions": [
+      "west daylight window",
+      "east closed examination-room door"
+    ]
+  },
+  "circulation": {
+    "description": "Menu arrival directly into seated camera; access beside desk",
+    "minimumClearanceMeters": 0.7
+  },
+  "productionCamera": {
+    "viewport": [
+      1920,
+      1080
+    ],
+    "location": [
+      0.0,
+      -1.1200000047683716,
+      1.1799999475479126
+    ],
+    "target": [
+      0,
+      0.95,
+      1.08
+    ],
+    "verticalFovDegrees": 35.98006717430776
+  },
+  "performanceBudget": {
+    "maxSceneTriangles": 500000,
+    "maxVLowBytes": 100000000,
+    "maxHighTextureBytes": 700000000
+  },
+  "creditBudget": {
+    "maximumCredits": 0,
+    "approvalRequired": true
+  },
+  "environment": {
+    "type": "none",
+    "identity": "",
+    "source": "",
+    "assignmentKey": ""
+  },
+  "artifacts": {
+    "floorPlan": "plans/floor-plan.png",
+    "reflectedCeilingPlan": "plans/ceiling-plan.png",
+    "planMetadata": "plan-metadata.json",
+    "wallElevations": [
+      "plans/west-elevation.png",
+      "plans/east-elevation.png"
+    ],
+    "visualTarget": "images/examiner-reference.png",
+    "openingContactSheet": "masks/opening-contact-sheet.png"
+  }
+}

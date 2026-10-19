@@ -1,0 +1,552 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "version",
+    "title",
+    "testType",
+    "status",
+    "provenance",
+    "sections",
+    "assets"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]{1,100}$"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "testType": {
+      "const": "academic"
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "validating",
+        "ready",
+        "review_required",
+        "failed"
+      ]
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "kind",
+        "source"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "developer_fixture",
+            "imported",
+            "ai_generated"
+          ]
+        },
+        "source": {
+          "type": "string"
+        }
+      }
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "path",
+          "sha256",
+          "mediaType"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "mediaType": {
+            "type": "string",
+            "pattern": "^(audio|image)/"
+          }
+        }
+      }
+    },
+    "sections": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "section",
+          "title",
+          "durationMs",
+          "timingSource",
+          "questions",
+          "paragraphs"
+        ],
+        "properties": {
+          "section": {
+            "enum": [
+              "listening",
+              "reading",
+              "writing",
+              "speaking"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "durationMs": {
+            "type": "integer",
+            "minimum": 1000,
+            "maximum": 14400000
+          },
+          "timingSource": {
+            "type": "string"
+          },
+          "audioParts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4
+            }
+          },
+          "audioAssetIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "paragraphs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "text",
+                "part"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "part": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4
+                }
+              }
+            }
+          },
+          "questions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "number",
+                "kind",
+                "prompt",
+                "part",
+                "points",
+                "evidence"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "number": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "kind": {
+                  "enum": [
+                    "single_choice",
+                    "multiple_choice",
+                    "matching",
+                    "gap_fill",
+                    "short_answer",
+                    "diagram_label",
+                    "true_false_not_given",
+                    "yes_no_not_given",
+                    "heading_match",
+                    "writing_task",
+                    "speaking_prompt"
+                  ]
+                },
+                "prompt": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "part": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4
+                },
+                "points": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "uniqueItems": true
+                },
+                "slots": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "uniqueItems": true
+                },
+                "imageAssetId": {
+                  "type": "string"
+                },
+                "labels": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "x",
+                      "y"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "x": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "y": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    }
+                  }
+                },
+                "minWords": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "answer": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "accepted",
+                    "caseSensitive"
+                  ],
+                  "properties": {
+                    "accepted": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "uniqueItems": true
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "string"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "caseSensitive": {
+                      "type": "boolean"
+                    },
+                    "maxWords": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "maxNumbers": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                },
+                "imageAssetIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "uniqueItems": true
+                },
+                "sourceAnchors": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "documentId",
+                      "blockIds"
+                    ],
+                    "properties": {
+                      "documentId": {
+                        "type": "string"
+                      },
+                      "blockIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "page": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ],
+                        "minimum": 1
+                      },
+                      "projectId": {
+                        "type": "string"
+                      },
+                      "sha256": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "reviewMaterials": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "kind",
+                      "text",
+                      "anchor"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "enum": [
+                          "explanations",
+                          "essays",
+                          "transcript"
+                        ]
+                      },
+                      "text": {
+                        "type": "string"
+                      },
+                      "anchor": {
+                        "type": "object",
+                        "required": [
+                          "documentId",
+                          "blockIds"
+                        ],
+                        "properties": {
+                          "documentId": {
+                            "type": "string"
+                          },
+                          "blockIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "page": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "minimum": 1
+                          },
+                          "projectId": {
+                            "type": "string"
+                          },
+                          "sha256": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "audioPlaylist": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "assetId",
+                "part",
+                "origin",
+                "segments"
+              ],
+              "properties": {
+                "assetId": {
+                  "type": "string"
+                },
+                "part": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 1,
+                  "maximum": 4
+                },
+                "origin": {
+                  "enum": [
+                    "book",
+                    "user",
+                    "uploaded"
+                  ]
+                },
+                "durationMs": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0
+                },
+                "startMs": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "endMs": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "segments": {
+                  "type": "array",
+                  "maxItems": 4,
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "part",
+                      "startMs",
+                      "endMs"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "part": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 4
+                      },
+                      "startMs": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "endMs": {
+                        "type": "integer",
+                        "minimum": 1
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "audioScripts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "part",
+                "origin",
+                "turns"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "part": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4
+                },
+                "origin": {
+                  "enum": [
+                    "book",
+                    "user"
+                  ]
+                },
+                "turns": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "speaker",
+                      "text"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "speaker": {
+                        "type": "string"
+                      },
+                      "text": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

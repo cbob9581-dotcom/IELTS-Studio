@@ -1,0 +1,31 @@
+import { test, expect } from "@playwright/test";
+
+test("computer and menu preserve the live room, answers and clock", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /训练模式/ }).click();
+  await page.getByRole("button", { name: "阅读", exact: true }).click();
+  await page.getByRole("button", { name: "进入考场" }).first().click();
+  const room = page.getByRole("region", { name: "三维考场", exact: true });
+  await expect(room.locator("canvas")).toBeVisible();
+  await expect(page.locator(".sidebar")).toHaveCount(0);
+  const canvas = await room.locator("canvas").elementHandle();
+  await room.focus();
+  await page.keyboard.press("e");
+  const answer = page.getByRole("textbox", { name: "第 1 题答案" });
+  await answer.fill("solar");
+  await expect(page.getByRole("dialog", { name: "机考操作界面" })).toBeVisible();
+  await page.getByRole("button", { name: "收起机考界面" }).click();
+  expect(await canvas!.evaluate((el) => el.isConnected)).toBe(true);
+  await expect(room.locator("canvas")).toBeVisible();
+  await room.focus(); await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "考场菜单" })).toBeVisible();
+  const before = await page.evaluate(() => JSON.parse(localStorage.getItem("ielts-test-attempts")!)[0].clock.remainingMs);
+  await page.waitForTimeout(2200);
+  await page.getByRole("button", { name: "继续考试", exact: true }).click();
+  await room.focus(); await page.keyboard.press("e");
+  await expect(answer).toHaveValue("solar");
+  await expect(page.getByText("已保存", { exact: true })).toBeVisible();
+  const after = await page.evaluate(() => JSON.parse(localStorage.getItem("ielts-test-attempts")!)[0].clock.remainingMs);
+  expect(after).toBeLessThan(before);
+  expect(await canvas!.evaluate((el) => el.isConnected)).toBe(true);
+});

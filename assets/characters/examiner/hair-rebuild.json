@@ -1,0 +1,12 @@
+{
+  "version": "hair-card-rebuild-v4",
+  "cards": 1140,
+  "cardVertices": 112860,
+  "cardTriangles": 145920,
+  "fineStrands": 2280,
+  "fiberVertices": 300960,
+  "part": "soft side part",
+  "frontEndRestMeters": 1.382,
+  "backEndRestMeters": 1.395,
+  "provenance": "Original project procedural geometry; previous CC-BY hair retained only in backup"
+}
