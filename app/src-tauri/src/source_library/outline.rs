@@ -8,6 +8,7 @@ fn number_after(s: &str, prefix: &str) -> Option<u64> {
     digits.parse().ok()
 }
 fn short_test(s: &str) -> Option<u64> {
+    let s=s.strip_prefix("PRACTICE ").unwrap_or(s);
     if s.len() > 85 || !s.starts_with("TEST") { return None; }
     number_after(s, "TEST").filter(|n| (1..=99).contains(n))
 }
@@ -15,35 +16,42 @@ pub fn derive(blocks: &[Value], roles: &Value) -> Vec<Value> {
     let analysis = roles.as_array().is_some_and(|r| !r.iter().any(|x| x=="mixed" || x=="questions") && r.iter().any(|x| x=="explanations" || x=="essays"));
     let mut skip = BTreeSet::new();
     let mut page_tests = BTreeMap::new();
+    let mut transcript_pages=BTreeSet::new();
     for b in blocks {
         let s=b["text"].as_str().unwrap_or("").trim().to_uppercase();
         let page=b["page"].as_u64().unwrap_or(0);
         if ["CONTENTS","目录","目录CONTENTS","前言PREFACE","PREFACE","INTRODUCTION"].contains(&s.as_str()) {skip.insert(page);}
         if let Some(n)=short_test(&s) {page_tests.insert(page,n);}
+        if ["TAPESCRIPTS","TAPE SCRIPTS","AUDIOSCRIPTS","AUDIO SCRIPTS"].contains(&s.as_str()){transcript_pages.insert(page);}
     }
     let mut test=0; let mut section=String::new(); let mut part=0;
     let mut region=if analysis {"explanations"}else{"questions"};
-    let mut role=region; let mut last_page=None; let mut out:Vec<Value>=vec![];
+    let mut role=region; let mut academic=true; let mut last_page=None; let mut out:Vec<Value>=vec![];
     for (i,b) in blocks.iter().enumerate() {
         let page=b["page"].as_u64().unwrap_or(0);
         if skip.contains(&page) { continue; }
         let s=b["text"].as_str().unwrap_or("").trim().to_uppercase();
+        if short_test(&s).is_some(){academic=true;}
+        if (s.len()<120&&s.contains("GENERAL TRAINING"))||s.starts_with("TEST A ")||s.starts_with("TEST B "){academic=false;}
+        if !academic{continue;}
         if last_page!=Some(page) {
+            if region!="transcript"&&transcript_pages.contains(&page){region="transcript";role=region;section="listening".into();part=0;}
+
             if region!="transcript" {if let Some(&n)=page_tests.get(&page) {if n!=test {test=n;section.clear();part=0;role=region;}}}
             last_page=Some(page);
         }
-        if (s=="AUDIOSCRIPTS" || s=="AUDIO SCRIPTS") && region!="transcript" {region="transcript";role=region;section="listening".into();part=0;}
-        if s.contains("LISTENING AND READING ANSWER") {region="answers";role=region;section.clear();part=0;}
+        if ["AUDIOSCRIPTS","AUDIO SCRIPTS","TAPESCRIPTS","TAPE SCRIPTS"].contains(&s.as_str()) && region!="transcript" {region="transcript";role=region;section="listening".into();part=0;}
+        if test>0&&region!="answers"&&(s.contains("LISTENING AND READING ANSWER")||s=="ANSWER KEY"||s=="ANSWER KEYS"||s.starts_with("EACH QUESTION CORRECTLY ANSWERED")) {region="answers";role=region;section.clear();part=0;test=0;}
         if s.starts_with("SAMPLE WRITING ANSWER") {region="essays";role=region;section="writing".into();part=0;}
         if let Some(n)=short_test(&s) {if n!=test {test=n;section=if region=="transcript" {"listening".into()}else{String::new()};part=0;role=region;}}
         let heading=s.len()<100||(region=="answers"&&s.starts_with("READING PASSAGE"));
         let passage=if heading {number_after(&s,"READING PASSAGE")}else{None};
         let task=if heading {number_after(&s,"WRITING TASK")}else{None};
-        let generic=if heading&&s.starts_with("PART") {number_after(&s,"PART")}else{None};
+        let generic=if heading&&s.starts_with("PART") {number_after(&s,"PART")}else if heading&&s.starts_with("SECTION"){number_after(&s,"SECTION")}else{None};
         let mut next=None;
         if passage.is_some() {next=Some("reading");}
         else if task.is_some() {next=Some("writing");}
-        else if s.len()<65 {for (heading,key) in [("LISTENING","listening"),("READING","reading"),("WRITING","writing"),("SPEAKING","speaking")] {if s==heading || (s.starts_with("TEST")&&s.ends_with(heading)) {next=Some(key);break;}}}
+        else if s.len()<65 {for (heading,key) in [("LISTENING","listening"),("READING","reading"),("WRITING","writing"),("SPEAKING","speaking")] {if s==heading || s==format!("ACADEMIC {heading}") || (s.starts_with("TEST")&&s.ends_with(heading)) {next=Some(key);break;}}}
         if let Some(next)=next {if section!=next {section=next.into();part=0;role=region;}}
         // Many answer keys list 1–40 under LISTENING/READING without Part headings.
         if region=="answers"&&!section.is_empty()&&part==0 {part=1;}

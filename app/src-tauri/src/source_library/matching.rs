@@ -1,6 +1,7 @@
 use super::err;
 use crate::contracts::Result;
 use serde_json::{json, Value};
+fn positions(q:&Value)->Option<std::ops::Range<u64>>{let start=q["number"].as_u64()?;let points=q["points"].as_u64().unwrap_or(1).max(1);if points>40{return None;}Some(start..start.checked_add(points)?)}
 pub fn candidates(questions: &Value, e: &Value) -> Vec<String> {
     if e["test"].as_str().is_none_or(|s| s.is_empty()) || e["section"].as_str().is_none() {
         return vec![];
@@ -14,36 +15,14 @@ pub fn candidates(questions: &Value, e: &Value) -> Vec<String> {
                 && q["section"] == e["section"]
                 && e["numbers"]
                     .as_array()
-                    .is_some_and(|a| a.contains(&q["number"]))
+                    .is_some_and(|a|positions(q).is_some_and(|range|a.iter().filter_map(Value::as_u64).any(|n|range.contains(&n))))
                 && e.get("part").is_none_or(|p| p.is_null() || q["part"] == *p)
         })
         .filter_map(|q| q["id"].as_str().map(String::from))
         .collect()
 }
 pub fn verify_entry(e: &Value, blocks: &Value) -> Result<()> {
-    let ids = e["blockIds"]
-        .as_array()
-        .filter(|a| !a.is_empty())
-        .ok_or_else(|| err("提取条目缺少原文位置"))?;
-    let mut text = String::new();
-    for id in ids {
-        let b = blocks
-            .as_array()
-            .into_iter()
-            .flatten()
-            .find(|b| b["id"] == *id)
-            .ok_or_else(|| err("提取条目引用了不存在的版面块"))?;
-        text.push_str(b["text"].as_str().unwrap_or(""));
-        text.push('\n');
-    }
-    let quote = e["quote"]
-        .as_str()
-        .filter(|s| !s.trim().is_empty())
-        .ok_or_else(|| err("提取条目缺少原文引文"))?;
-    if !text.contains(quote) && !decode_entities(&text).contains(&decode_entities(quote)) {
-        return Err(err("提取引文不在指定原文中，已保留响应等待核对"));
-    }
-    Ok(())
+    super::provenance::resolve(e,blocks)?;Ok(())
 }
 pub(crate) fn decode_entities(text:&str)->String{
     let mut out=String::with_capacity(text.len());let mut rest=text;
@@ -162,11 +141,14 @@ pub fn reconcile(p: &mut Value) -> Result<()> {
         if e["state"] == "ignored" {
             continue;
         }
+        if e["evidenceKind"]=="visual_transcription"&&e["sourceVerified"]!=true {e["state"]=json!("source_review");continue;}
         let ids = candidates(&all, e);
         e["candidates"] = json!(ids);
         let unique: std::collections::HashSet<_> = ids.iter().collect();
-        let expected = e["numbers"].as_array().map(Vec::len).unwrap_or(0);
-        if ids.is_empty() || ids.len() != expected || unique.len() != ids.len() {
+        let requested:std::collections::HashSet<_>=e["numbers"].as_array().into_iter().flatten().filter_map(Value::as_u64).collect();
+        let coverage:Vec<_>=all.as_array().into_iter().flatten().filter(|q|ids.iter().any(|id|q["id"]==*id)).filter_map(positions).flatten().collect();let covered:std::collections::HashSet<_>=coverage.iter().copied().collect();
+        let complete=if e["kind"]=="answers"{covered==requested}else{requested.is_subset(&covered)};
+        if ids.is_empty() || !complete || coverage.len()!=covered.len() || unique.len() != ids.len() || requested.len()!=e["numbers"].as_array().map(Vec::len).unwrap_or(0) {
             e["state"] = json!("unassigned");
             continue;
         }

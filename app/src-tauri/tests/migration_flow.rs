@@ -3,6 +3,14 @@ use ielts_core::{
     storage::{StorageRoots, Store},
 };
 #[test]
+fn asset_migration_snapshots_live_task_database_and_omits_runtime_locks(){
+ let t=tempfile::tempdir().unwrap();let roots=StorageRoots{assets:t.path().join("a").to_string_lossy().into(),study:t.path().join("b").to_string_lossy().into()};let s=Store::open(roots.clone()).unwrap();
+ let mut q=ielts_core::task_queue::Queue::open(std::path::Path::new(&roots.assets)).unwrap();let task=q.enqueue(ielts_core::task_queue::TaskRequest{kind:"source".into(),owner:"book".into(),targets:vec!["one".into(),"two".into()],title:"Source import".into()}).unwrap();q.claim().unwrap();q.complete_target(&task.id,"one").unwrap();q.reserve_request(&task.id,"attempt-one","test-model",4).unwrap();
+ let lock=std::fs::File::create(std::path::Path::new(&roots.assets).join(".task-engine.lock")).unwrap();lock.try_lock().unwrap();
+ let target=StorageRoots{assets:t.path().join("new-a").to_string_lossy().into(),study:roots.study};migration::copy_verified(&s,target.clone()).unwrap();
+ assert!(!std::path::Path::new(&target.assets).join(".task-engine.lock").exists());let migrated=ielts_core::task_queue::Queue::open(std::path::Path::new(&target.assets)).unwrap();let moved=migrated.read(&task.id).unwrap();assert_eq!(moved.completed,vec!["one"]);assert_eq!(moved.usage.requests,1);assert_eq!(q.read(&task.id).unwrap().completed,vec!["one"]);
+}
+#[test]
 fn allows_changing_only_the_study_directory() {
     let t = tempfile::tempdir().unwrap();
     let a = StorageRoots {

@@ -17,6 +17,8 @@ export function SpeakingSession({port,paper,attempt,config,onChange,onComplete,i
  const current=useRef({attempt,onChange,onComplete});current.current={attempt,onChange,onComplete};
  const [sceneReady,setSceneReady]=useState(false),[ready,setReady]=useState(false);
  const [error,setError]=useState(""),[status,setStatus]=useState("正在准备考场…");
+ const retrySpeechTurn=useRef<string|null>(null);
+ const articulation=useRef({energy:0,rounding:0,width:0});
  const [retry,setRetry]=useState(0),[now,setNow]=useState(Date.now());
  const mouthLevel=useRef(0),microphone=useRef<Microphone|null>(null),completed=useRef(false);
  const blankNotes=useRef(emptyNotes());
@@ -116,9 +118,9 @@ export function SpeakingSession({port,paper,attempt,config,onChange,onComplete,i
        let spokenMs=0;
        for(let i=0;i<chunks.length;i++){
          setStatus("正在准备考官语音…");
-         const bytes=await request(id=>port.synthesizeSpeech(attempt.id,`${flow.turnId}-${i}`,chunks[i],id));
+         const bytes=await request(id=>port.synthesizeSpeech(attempt.id,`${flow.turnId}-${i}`,chunks[i],id,retrySpeechTurn.current===flow.turnId));
          controller.signal.throwIfAborted();setStatus("考官正在说话…");
-         const spokenAt=performance.now();await playSpeech(bytes,config,controller.signal,mouthLevel);spokenMs+=performance.now()-spokenAt;
+         const spokenAt=performance.now();await playSpeech(bytes,config,controller.signal,mouthLevel,articulation);spokenMs+=performance.now()-spokenAt;
        }
        emit({type:"audio_ended",turnId:flow.turnId,now:Date.now(),durationMs:spokenMs});
      }else if(flow.stage==="answering"||flow.stage==="long_turn"||flow.stage==="roundoff_answer"){
@@ -159,10 +161,10 @@ export function SpeakingSession({port,paper,attempt,config,onChange,onComplete,i
    <SpeakingRoom port={port} flow={flow} topic={topic} notes={attempt.speakingNotes??blankNotes.current}
      onNotes={notes=>{const c=current.current;const next={...c.attempt,speakingNotes:notes};current.current={...c,attempt:next};c.onChange(next);}}
      onPropsReady={()=>emit({type:"props_ready",now:Date.now()})} onReady={sceneLoaded}
-     interactive={interactive} mouthLevel={mouthLevel} renderScale={config.blender.renderScale} assetKey={config.blender.runtimeAssetPath}/>
+     interactive={interactive} mouthLevel={mouthLevel} articulation={articulation} renderScale={config.blender.renderScale} assetKey={config.blender.runtimeAssetPath}/>
    {attempt.status!=="submitted"&&<div className={`speaking-status ${error?"error":""}`} role="status">
      {error||status}{prep!==null&&` · ${prep}s`}
-     {error&&<button onClick={()=>{setError("");setRetry(x=>x+1);}}>重试当前环节</button>}
+     {error&&<button onClick={()=>{if(error.includes("语音请求尚未确认"))retrySpeechTurn.current=flow?.turnId??null;setError("");setRetry(x=>x+1);}}>{error.includes("语音请求尚未确认")?"重新请求考官语音（可能再次计费）":"重试当前环节"}</button>}
    </div>}
  </>;
 }

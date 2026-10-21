@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {TaskStatus} from "./cloud/TaskStatus";
+import {TaskCenter} from './tasks/TaskCenter';
 import {SourceLibrary} from "./source/SourceLibrary";
 import { Home } from "./pages/Home";
 import { version } from "../package.json";
@@ -37,6 +38,8 @@ export default function App() {
   const [port, setPort] = useState<DesktopPort | null>(null);
   const [roots, setRoots] = useState<StorageRoots | null>(null);
   const [error, setError] = useState("");
+  const [sourceProjectId,setSourceProjectId]=useState<string>();
+  const [cloudJobId,setCloudJobId]=useState<string>();
   const [mode, setMode] = useState<Mode>("training");
   const [working, setWorking] = useState<{
     paper: PaperVersion;
@@ -120,6 +123,7 @@ export default function App() {
             ["home", "学习首页", LayoutDashboard],
             ["library", "我的题库", Library],
             ["sources", "真题资料库", Library],
+            ["tasks", "后台任务", Clock3],
             ["history", "学习记录", Clock3],
             ["settings", "设置", Settings],
           ].map(([key, label, Icon]) => {
@@ -151,7 +155,7 @@ export default function App() {
           <span className="local-badge">LOCAL FIRST</span>
         </header>
         <div className={`page ${workspace ? "workspace-page" : ""}`}>
-          {port&&<TaskStatus port={port}/>}
+          {port&&<TaskStatus port={port} onOpen={()=>setPage("tasks")}/>}
           {error && (
             <p className="error" role="alert">
               {error}
@@ -175,6 +179,7 @@ export default function App() {
               <button className="back" onClick={() => setPage("home")}>
                 <ArrowLeft size={16} /> 返回首页
               </button>
+              {page==='tasks'&&port&&<TaskCenter port={port} onOpen={async t=>{try{if(t.kind==='source'){setSourceProjectId(t.owner);setPage('sources');}else{const job=await port.cloudRead(t.owner);if(job.kind==='assessment'&&typeof job.request.attemptId==='string'){await resume(await port.loadAttempt(job.request.attemptId));}else{setCloudJobId(t.owner);setPage('training');}}}catch(e){setError(errorText(e));}}}/>}
               {page === "report" && working ? (
                 <ReportView port={port} paper={working.paper} attempt={working.attempt}
                   result={gradeObjective(selectScope(working.paper.sections.find(s=>s.section===working.attempt.section)!,working.attempt.scope),working.attempt.responses,working.attempt.revealedQuestions)} />
@@ -188,17 +193,19 @@ export default function App() {
                   }}
                 />
               ) : page === "sources" ? (
-                <SourceLibrary port={roots?port:null}/>
+                <SourceLibrary port={roots?port:null} initialProjectId={sourceProjectId}/>
               ) : page === "history" ? (
                 <History port={roots ? port : null} onResume={resume} />
               ) : (
                 <PaperLibrary
+                  initialJobId={cloudJobId}
                   mode={page === "exam" ? "exam" : "training"}
                   port={roots ? port : null}
                   onStart={(p, s, scope) =>
                     start(p, s, scope, page === "exam" ? "exam" : "training")
                   }
                   onSettings={() => setPage("settings")}
+                  onSources={(id)=>{setSourceProjectId(id);setPage("sources");}}
                 />
               )}
             </>

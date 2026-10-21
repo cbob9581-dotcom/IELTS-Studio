@@ -12,6 +12,7 @@
 backups/
 dist/
 app/node_modules/
+*.tsbuildinfo
 app/dist/
 app/src-tauri/target/
 app/test-results/
@@ -30,6 +31,8 @@ rooms/speaking/plans/*.png
 docs/**
 !docs/
 !docs/听力音频使用与配置-0.5.2.md
+!docs/出题与导入修复-0.5.3.md
+!docs/系统优化与配置-0.6.0.md
 
 # One-off local review helpers point to personal test folders and screenshots
 tools/start-*-verification.ps1

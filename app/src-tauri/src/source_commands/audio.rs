@@ -34,7 +34,7 @@ pub(super) fn action(a:&str,r:&Path,p:&mut Value,v:&Value,state:&State<AppState>
   },
   "audio_reset_failed"=>{
    let d=find(p,"audioDrafts",target)?;let provider:ProviderConfig=serde_json::from_value(d["job"]["provider"].clone())?;let base=lib::dir(r,p["id"].as_str().unwrap())?.join("audio-cache");
-   for t in d["turns"].as_array().unwrap(){let mut cfg=provider.clone();cfg.voice=d["voices"][t["speaker"].as_str().unwrap()].as_str().unwrap().into();let hash=audio_jobs::segment_key(t["text"].as_str().unwrap(),&cfg);if !audio_jobs::cached(&base.join(format!("{hash}.wav"))){credentials::clear_upload(&format!("tts-{hash}"))?;}}
+   for t in d["turns"].as_array().unwrap(){let mut cfg=provider.clone();cfg.voice=d["voices"][t["speaker"].as_str().unwrap()].as_str().unwrap().into();let hash=audio_jobs::segment_key(t["text"].as_str().unwrap(),&cfg);if !audio_jobs::cached(&base.join(format!("{hash}.wav"))){credentials::clear_upload(&format!("tts-{hash}"))?;audio_jobs::reset_response(&base.join(format!("{hash}.response")))?;}}
   },
   "audio_verify"=>{
    let doc=find(p,"documents",target)?.clone();if doc["state"]!="media"{return Err(err("请选择听力音频"));}let path=lib::document_path(r,p,&doc)?;let bytes=fs::read(path)?;let duration=assets::duration(&bytes,doc["extension"].as_str().unwrap_or("wav"))?;let d=find_mut(p,"documents",target)?;d["durationMs"]=json!(duration);d["audioVerified"]=json!(true);
@@ -59,10 +59,10 @@ async fn work(r:&Path,p:&mut Value,target:&str,_state:&State<'_,AppState>)->Resu
  {let draft=find_mut(p,"audioDrafts",target)?;draft["job"]["segments"]=json!(registered);draft["job"]["done"]=json!(registered.len());draft["state"]=json!(if missing.is_empty(){"assembling"}else{"synthesizing"});draft["error"]=Value::Null;}checkpoint(r,p)?;
  if !missing.is_empty(){
   let key=credentials::read_for_service("qwenTts")?;let mut set=tokio::task::JoinSet::new();
-  let selected=audio_jobs::unique_requests(&missing.iter().map(|(_,_,h)|h.clone()).collect::<Vec<_>>(),d["parallelism"].as_u64().unwrap_or(3) as usize);
+  let selected=audio_jobs::unique_requests(&missing.iter().map(|(_,_,h)|h.clone()).collect::<Vec<_>>(),(d["parallelism"].as_u64().unwrap_or(3) as usize).min(crate::task_policy::TaskPolicy::load(r)?.tts_concurrency));
   for i in selected {let (t,cfg,hash)=missing[i].clone();let key=key.clone();let cache=cache.clone();set.spawn(async move{let result=async {
     let ticket=format!("tts-{hash}");
-    let bytes=audio_jobs::obtain(||{credentials::read_upload(&ticket)?.map(|s|serde_json::from_str(&s).map_err(Into::into)).transpose()},|a|credentials::save_upload(&ticket,&serde_json::to_string(a)?),||speech::tts_generate(&cfg,&key,t["text"].as_str().unwrap()),|url|{let cfg=cfg.clone();async move{speech::tts_download(&cfg,&url).await}}).await?;
+    let bytes=audio_jobs::obtain_durable(&cache.join(format!("{hash}.response")),||{credentials::read_upload(&ticket)?.map(|s|serde_json::from_str(&s).map_err(Into::into)).transpose()},|a|credentials::save_upload(&ticket,&serde_json::to_string(a)?),||speech::tts_generate(&cfg,&key,t["text"].as_str().unwrap()),|url|{let cfg=cfg.clone();async move{speech::tts_download(&cfg,&url).await}}).await?;
     let pcm=tokio::task::spawn_blocking(move||assets::decode(&bytes,"wav",300)).await.map_err(|_|err("语音解码线程异常"))??;
     let bytes=assets::wav(&pcm,24000);write_file(&cache.join(format!("{hash}.wav")),&bytes)?;credentials::clear_upload(&ticket)?;Ok::<_,crate::contracts::DesktopError>(json!({"key":hash,"ready":true,"durationMs":pcm.len()/24}))
    }.await;(t["id"].as_str().unwrap().to_string(),result)});}

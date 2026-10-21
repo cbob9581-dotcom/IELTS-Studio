@@ -17,11 +17,15 @@ export function Library({
   port,
   onStart,
   onSettings,
+  onSources,
+  initialJobId,
 }: {
   mode: Mode;
   port: DesktopPort | null;
   onStart: (p: PaperVersion, s: Section, scope: Scope) => Promise<void>;
   onSettings: () => void;
+  onSources?:(id:string)=>void;
+  initialJobId?:string;
 }) {
   const [section, setSection] = useState<Section>("reading");
   const [papers, setPapers] = useState<PaperSummary[]>([]);
@@ -29,6 +33,8 @@ export function Library({
   const [kind, setKind] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showFixtures,setShowFixtures]=useState(false);
+  const visiblePapers=papers.filter(p=>(mode==="training"&&showFixtures||p.provenance.kind!=="developer_fixture")&&(mode==="exam"?p.sections.length===4:p.sections.includes(section)));
   const refresh = () => {
     if (port)
       port
@@ -37,6 +43,7 @@ export function Library({
         .catch((e) => setError(errorText(e)));
   };
   useEffect(refresh, [port]);
+  useEffect(()=>{if(!port||section!=="speaking"||mode!=="training")return;let alive=true;void port.getConfig().then(async config=>{if(!alive)return;const {runtimeSceneCache}=await import('../rooms/sceneCache');if(alive)await runtimeSceneCache(port).warm(config.blender.runtimeAssetPath);}).catch(()=>{});return()=>{alive=false;};},[port,section,mode]);
   async function start(item: PaperSummary) {
     if (!port) return;
     setBusy(true);
@@ -154,7 +161,7 @@ export function Library({
           导入本地 JSON 卷包
         </button>
       </div>
-      {port&&<CloudLibrary port={port} mode={mode} section={section} part={part} kind={kind} onPublished={refresh}/>}
+      {port&&<CloudLibrary initialJobId={initialJobId} port={port} mode={mode} section={section} part={part} kind={kind} onPublished={refresh} onSources={onSources}/>}
       {error && (
         <p className="error" role="alert">
           {error}
@@ -166,9 +173,9 @@ export function Library({
           <button onClick={onSettings}>前往设置</button>
         </div>
       )}
+      {mode==="training"&&papers.some(p=>p.provenance.kind==="developer_fixture")&&<label className="check-row"><input type="checkbox" checked={showFixtures} onChange={e=>setShowFixtures(e.target.checked)}/>显示开发测试素材</label>}
       <div className="paper-list">
-        {papers
-          .filter((p) => mode === "exam" || p.sections.includes(section))
+        {visiblePapers
           .map((p) => (
             <article className="paper-card" key={`${p.id}-${p.version}`}>
               <div>
@@ -197,11 +204,10 @@ export function Library({
           ))}
       </div>
       {port &&
-        papers.filter((p) => mode === "exam" || p.sections.includes(section))
-          .length === 0 && (
+        visiblePapers.length === 0 && (
           <div className="empty-state">
-            <h3>还没有这部分的试卷</h3>
-            <p>导入带有答案、依据和所需媒体的 JSON 卷包后开始。</p>
+            <h3>{mode==="exam"?"还没有完整四科套卷":"还没有这部分的试卷"}</h3>
+            <p>可以先生成此项文字题目，或将真题与答案资料上传到资料库。开发测试素材默认隐藏。</p>
           </div>
         )}
     </>

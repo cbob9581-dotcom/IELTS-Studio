@@ -41,6 +41,7 @@ export function Workspace({
   const beforeExit=useRef<()=>Promise<void>>(async()=>{});
   const registerBeforeExit=useCallback((save:()=>Promise<void>)=>{beforeExit.current=save;return()=>{if(beforeExit.current===save)beforeExit.current=async()=>{};};},[]);
   const [draft, setDraft] = useState(initial);
+  useEffect(()=>{void port.taskExamActive?.(draft.status!=="submitted").catch(()=>{});return()=>{void port.taskExamActive?.(false).catch(()=>{});};},[port,draft.status==="submitted"]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [computerOpen, setComputerOpen] = useState(initial.section !== "speaking" && initial.status !== "room" && initial.status !== "submitted");
   const [computerMounted, setComputerMounted] = useState(computerOpen);

@@ -82,34 +82,20 @@ pub fn save_speaking_recording(
 }
 #[tauri::command]
 pub async fn speech_synthesize(
-    attempt_id: String,
-    turn_id: String,
-    text: String,
-    request_id: String,
-    state: State<'_, AppState>,
+    attempt_id: String,turn_id: String,text: String,request_id: String,allow_retry:Option<bool>,state: State<'_, AppState>,
 ) -> Result<tauri::ipc::Response> {
-    let p = config(&state, "qwenTts")?;
-    let audio = take_path(&state, &attempt_id, &format!("{turn_id}-examiner"), true)?;
-    let metadata = audio.with_extension("json");
-    if audio.exists() && metadata.exists() {
-        let saved: Value = serde_json::from_slice(&fs::read(&metadata)?)?;
-        if saved["text"] == text && saved["model"] == p.model && saved["voice"] == p.voice {
-            return Ok(tauri::ipc::Response::new(fs::read(audio)?));
-        }
-    }
-    let key = credentials::read_for_service("qwenTts")?;
-    let bytes = speech::cancellable(&request_id, speech::synthesize(&p, &key, &text)).await?;
-    if bytes.is_empty() || bytes.len() > 16 * 1024 * 1024 {
-        return Err(DesktopError::new("speech", "TTS 未返回有效音频"));
-    }
-    // Write the cache only for a still-active attempt. Cancelled responses never reach this point.
-    let path = take_path(&state, &attempt_id, &format!("{turn_id}-examiner"), true)?;
-    fs::write(path, &bytes)?;
-    crate::storage::atomic_json(
-        &metadata,
-        &serde_json::json!({"text":text,"model":p.model,"voice":p.voice}),
-    )?;
-    Ok(tauri::ipc::Response::new(bytes))
+    let _lease=crate::cloud_commands::Lease::acquire(&format!("speech-{request_id}"))?;
+    let p=config(&state,"qwenTts")?;let audio=take_path(&state,&attempt_id,&format!("{turn_id}-examiner"),true)?;let metadata=audio.with_extension("json");let cache_key=speech::speech_cache_key(&p,&text);
+    if audio.is_file()&&metadata.is_file(){let saved:Value=serde_json::from_slice(&fs::read(&metadata)?)?;if saved["cacheKey"]==cache_key{return Ok(tauri::ipc::Response::new(fs::read(audio)?));}}
+    let root=crate::commands::locked(&state,|s|Ok(PathBuf::from(&s.roots.assets).join("speech-cache")))?;
+    let ticket=format!("examiner-tts-{cache_key}");let previous=credentials::read_upload(&ticket)?;let can_download=previous.is_some();
+    let key=credentials::read_for_service("qwenTts")?;
+    let bytes=speech::cancellable(&request_id,crate::speech_cache::obtain(&root,&cache_key,allow_retry==Some(true)||can_download,||async{
+      crate::source_library::audio_jobs::obtain(||previous.map(|s|serde_json::from_str(&s).map_err(Into::into)).transpose(),|artifact|credentials::save_upload(&ticket,&serde_json::to_string(artifact)?),||speech::tts_generate(&p,&key,&text),|url|{let p=p.clone();async move{speech::tts_download(&p,&url).await}}).await
+    })).await?;
+    let path=take_path(&state,&attempt_id,&format!("{turn_id}-examiner"),true)?;fs::write(path,&bytes)?;
+    crate::storage::atomic_json(&metadata,&serde_json::json!({"cacheKey":cache_key,"text":text,"model":p.model,"voice":p.voice}))?;
+    credentials::clear_upload(&ticket)?;Ok(tauri::ipc::Response::new(bytes))
 }
 #[tauri::command]
 pub async fn speech_recognize(

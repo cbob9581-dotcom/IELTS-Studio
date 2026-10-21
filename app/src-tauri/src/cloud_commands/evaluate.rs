@@ -20,6 +20,7 @@ pub(super) async fn step(
         )
     })?;
     let section = a["section"].as_str().unwrap();
+    if section=="speaking"{return super::evaluate_session::step(state,root,study,j,&a,&p).await;}
     let sec = p["sections"]
         .as_array()
         .unwrap()
@@ -30,6 +31,7 @@ pub(super) async fn step(
         j["evaluations"] = json!([]);
     }
     let done = j["evaluations"].as_array().unwrap().len();
+    j["stage"]=json!(done);
     if section == "writing" {
         let qs: Vec<_> = sec["questions"]
             .as_array()
@@ -114,7 +116,7 @@ pub(super) async fn step(
             } else {
                 json!(context)
             };
-            let v = cloud::chat(&provider, &key, assessment::WRITING, content, needs_image).await?;
+            let v = cloud::chat_recorded(&provider, &key, assessment::WRITING, content, needs_image,Some(&dir.join(format!("writing-{}-response.txt",j["stage"].as_u64().unwrap_or(0))))).await?;
             assessment::validate(&v, "writing", false)?;
             for c in v["criteria"].as_array().unwrap() {
                 for e in c["evidence"].as_array().unwrap() {
@@ -160,7 +162,7 @@ pub(super) async fn step(
             let key = credentials::read_for_service("evaluation")?;
             let analysis = assessment::audio_for_model(&bytes)?;
             let content = json!([{"type":"input_audio","input_audio":{"data":format!("data:audio/wav;base64,{}",STANDARD.encode(&analysis)),"format":"wav"}},{"type":"text","text":serde_json::to_string(&json!({"prompt":t["prompt"],"rawAsr":t["text"],"durationSeconds":duration}))?}]);
-            let v = cloud::chat(&provider, &key, assessment::SPEAKING, content, true).await?;
+            let v = cloud::chat_recorded(&provider, &key, assessment::SPEAKING, content, true,Some(&dir.join(format!("speaking-{}-response.txt",j["stage"].as_u64().unwrap_or(0))))).await?;
             assessment::validate(&v, "speaking", true)?;
             j["evaluations"].as_array_mut().unwrap().push(json!({"turnId":t["turnId"],"recordingId":take,"model":provider.model,"audioSha256":papers::hash(&bytes),"analysisAudioSha256":papers::hash(&analysis),"signalSeconds":signal,"durationSeconds":duration,"result":v}));
             return Ok(());

@@ -4,6 +4,8 @@ use serde_json::{json,Value};
 use std::{fs,path::Path,io::Read};
 pub const MAX_PAGES:u32=180;
 pub const MAX_BYTES:u64=40*1024*1024;
+pub fn pending_indices(document:&Value,concurrency:usize)->Result<Vec<usize>>{let segments=document["parseSegments"].as_array().ok_or_else(||err("缺少 PDF 批次记录"))?;Ok(segments.iter().enumerate().filter(|(_,s)|!["complete","failed"].contains(&s["state"].as_str().unwrap_or("pending"))).take(concurrency.clamp(1,3)).map(|(i,_)|i).collect())}
+pub fn record_failure(document:&mut Value,index:usize,message:&str)->Result<()>{let segment=document["parseSegments"].as_array_mut().and_then(|s|s.get_mut(index)).ok_or_else(||err("PDF 批次不存在"))?;segment["state"]=json!("failed");segment["error"]=json!(message);Ok(())}
 pub fn ranges(pages:u32,bytes:u64,max_pages:u32,max_bytes:u64)->Result<Vec<(u32,u32)>>{
  if pages==0||max_pages==0||max_bytes==0{return Err(err("PDF 页数或分批配置无效"))}
  let count=pages.div_ceil(max_pages).max(bytes.div_ceil(max_bytes).min(pages as u64) as u32).max(1);

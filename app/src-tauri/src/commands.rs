@@ -28,6 +28,8 @@ pub fn initialize(app: &tauri::App) -> Result<()> {
         .app_config_dir()
         .map_err(|e| DesktopError::new("config", e))?
         .join("storage-roots.json");
+    #[cfg(feature="verification")]
+    let config=std::env::var_os("IELTS_STUDIO_TEST_CONFIG_DIR").map(|p|PathBuf::from(p).join("storage-roots.json")).unwrap_or(config);
     let result: Result<Option<Store>> = (|| {
         if config.exists() {
             let roots: StorageRoots = serde_json::from_slice(&fs::read(&config)?)?;

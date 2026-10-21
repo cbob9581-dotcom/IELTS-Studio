@@ -46,6 +46,8 @@ pub fn asr_payload(p: &ProviderConfig, wav: &str) -> Value {
     json!({"model":p.model,"messages":[{"role":"user","content":[{"type":"input_audio","input_audio":{"data":format!("data:audio/wav;base64,{wav}")}}]}],"stream":false,"asr_options":{"language":"en","enable_itn":false}})
 }
 pub fn client(p: &ProviderConfig) -> Result<reqwest::Client> {
+    #[cfg(feature="verification")]
+    if std::env::var("IELTS_STUDIO_TEST_DISABLE_CLOUD").as_deref()==Ok("1")&&!(std::env::var("IELTS_STUDIO_TEST_ALLOW_TEXT").as_deref()==Ok("1")&&url::Url::parse(&p.base_url).ok().and_then(|u|u.host_str().map(str::to_owned)).as_deref()==Some("api.deepseek.com")){return Err(error("验证构建已阻止云服务请求，未产生出题、OCR、ASR 或 TTS 调用"));}
     static CLIENTS: OnceLock<Mutex<HashMap<u32, reqwest::Client>>> = OnceLock::new();
     let mut clients = CLIENTS
         .get_or_init(Default::default)
@@ -72,6 +74,7 @@ pub fn client(p: &ProviderConfig) -> Result<reqwest::Client> {
 // DeepSeek defaults to high-effort thinking, which can consume the entire JSON budget.
 // Keep this provider-specific; other OpenAI-compatible APIs may reject the parameter.
 pub fn fast_mode(p: &ProviderConfig, body: &mut Value) {
+    if p.model.starts_with("qwen3.8-omni")&&url::Url::parse(&p.base_url).ok().and_then(|u|u.host_str().map(str::to_owned)).is_some_and(|h|h.ends_with(".aliyuncs.com")){body["reasoning_effort"]=json!("none");}
     if url::Url::parse(&p.base_url)
         .ok()
         .and_then(|u| u.host_str().map(str::to_owned))
@@ -82,6 +85,7 @@ pub fn fast_mode(p: &ProviderConfig, body: &mut Value) {
         body["thinking"] = json!({"type":"disabled"});
     }
 }
+pub fn speech_cache_key(p:&ProviderConfig,text:&str)->String{crate::papers::hash(&serde_json::to_vec(&json!({"version":2,"endpoint":p.base_url,"model":p.model,"region":p.region,"voice":p.voice,"language":p.language,"text":text})).unwrap())}
 pub async fn bounded(mut r: reqwest::Response, limit: usize) -> Result<Vec<u8>> {
     if !r.status().is_success() {
         let status = r.status().as_u16();

@@ -18,3 +18,11 @@ test("failed cloud step stops without automatic paid retry",async()=>{
  await runner.run({id:"x",kind:"import",request:{},state:"pending",stage:0});
  expect(port.cloudStep).toHaveBeenCalledTimes(1);expect(runner.snapshot().job?.state).toBe("failed");
 });
+test("native queue owns execution even when the web page observer detaches",async()=>{
+ const initial={id:"native-job",kind:"generation",request:{},state:"pending",stage:0} as CloudJob;
+ const task={id:"queue-1",kind:"cloud",owner:initial.id,targets:[initial.id],completed:[],state:"queued",title:"generation",createdAt:0,updatedAt:0};
+ const port={taskEnqueue:vi.fn().mockResolvedValue(task),taskRead:vi.fn().mockResolvedValue({...task,state:"ready"}),cloudRead:vi.fn().mockResolvedValue({...initial,stage:3,state:"review_required"}),cloudStep:vi.fn()} as unknown as DesktopPort;
+ const runner=taskRunner(port);const off=runner.subscribe(()=>{});const result=runner.run(initial);off();
+ expect((await result).state).toBe("review_required");expect(port.cloudStep).not.toHaveBeenCalled();
+ expect((port as any).taskEnqueue).toHaveBeenCalledWith(expect.objectContaining({kind:"cloud",owner:"native-job"}));
+});

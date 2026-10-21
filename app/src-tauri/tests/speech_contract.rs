@@ -29,6 +29,12 @@ fn qwen_payloads_keep_raw_audio_and_configured_voice() {
     assert!(speech::tts_payload(&p, &"a".repeat(601)).is_err());
 }
 #[test]
+fn qwen_omni_fast_analysis_and_shared_speech_cache_use_the_actual_provider_parameters(){
+ let mut p=ProviderConfig::default();p.base_url="https://dashscope.aliyuncs.com/compatible-mode/v1".into();p.model="qwen3.8-omni-flash".into();
+ let mut body=serde_json::json!({});speech::fast_mode(&p,&mut body);assert_eq!(body["reasoning_effort"],"none");
+ let first=speech::speech_cache_key(&p,"Hello");p.voice="New voice".into();assert_ne!(first,speech::speech_cache_key(&p,"Hello"));
+}
+#[test]
 fn endpoint_normalization_never_drops_workspace_path_or_accepts_ws() {
     assert_eq!(
         speech::endpoint("https://api.deepseek.com/v1", "chat/completions").unwrap(),

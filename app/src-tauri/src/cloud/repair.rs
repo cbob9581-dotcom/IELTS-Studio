@@ -4,6 +4,8 @@ use serde_json::{json,Value};
 use std::{fs,path::Path};
 pub fn reserve_source_correction(output:&Path)->Result<()> {
  let marker=output.with_extension("attempt.json");
+ if output.with_extension("response.txt").is_file(){return Ok(());}
+ if marker.exists(){let receipt=output.with_extension("response.request.json");if receipt.is_file()&&serde_json::from_slice::<Value>(&fs::read(receipt)?)?["state"]=="budget_blocked"{fs::remove_file(&marker)?;}}
  if marker.exists(){return Err(super::error("已反馈原模型 1 次，但请求结果未确认；不会在继续时重复发送。需要重新请求时，请使用明确标注可能计费的按钮。"))}
  atomic_json(&marker,&json!({"state":"sending","at":crate::contracts::now_ms()}))
 }
@@ -46,11 +48,11 @@ where F:FnMut(&mut Value)->Result<()> {
  let mut report=feedback(&original_request,&original,&issue.message);report["originalHash"]=json!(hash);
  atomic_json(&checkpoint.with_extension("feedback.json"),&report)?;
  let mut repaired=if repair_path.exists()&&attempt.is_some(){serde_json::from_slice(&fs::read(&repair_path)?)?}else{
-   if let Some(a)=attempt {return Err(super::error(format!("已反馈原模型 1 次，修复请求未完成或响应无效：{}；不会在继续时自动重复计费。",a["error"].as_str().unwrap_or("请求结果尚未确认"))))}
+   if let Some(a)=attempt.filter(|_|!checkpoint.with_extension("repair-response.txt").is_file()) {return Err(super::error(format!("已反馈原模型 1 次，修复请求未完成或响应无效：{}；不会在继续时自动重复计费。",a["error"].as_str().unwrap_or("请求结果尚未确认"))))}
    // Request intent is durable BEFORE sending: a crash cannot silently issue it again.
    atomic_json(&attempt_path,&json!({"originalHash":hash,"state":"sending"}))?;
    let request=chat_for_validation(provider,key,system,append_feedback(content,&report)?,stream,Some(&checkpoint.with_extension("repair-response.txt"))).await;
-   let v=match request {Ok(v)=>v,Err(e)=>{atomic_json(&attempt_path,&json!({"originalHash":hash,"state":"failed","error":e.message}))?;return Err(super::error(format!("已反馈原模型 1 次，但修复请求失败：{}；已停止，未重新生成整卷。",e.message)))}};
+   let v=match request {Ok(v)=>v,Err(e)=>{if matches!(e.code.as_str(),"task_queue"|"task_budget"){fs::remove_file(&attempt_path)?;return Err(e);}atomic_json(&attempt_path,&json!({"originalHash":hash,"state":"failed","error":e.message}))?;return Err(super::error(format!("已反馈原模型 1 次，但修复请求失败：{}；已停止，未重新生成整卷。",e.message)))}};
    atomic_json(&repair_path,&v)?;atomic_json(&attempt_path,&json!({"originalHash":hash,"state":"received"}))?;v
  };
  validate(&mut repaired).map_err(|e|super::error(format!("已向原模型反馈校验原因并修复 1 次，仍未通过：{}。原错误：{}；已保存两次响应，不会无限重试。",e.message,issue.message)))?;

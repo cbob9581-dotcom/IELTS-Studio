@@ -23,6 +23,16 @@ pub(super) async fn step(state: &AppState, root: &Path, j: &mut Value) -> Result
     let dir = jobs::dir(root, j["id"].as_str().unwrap())?;
     let stage = j["stage"].as_u64().unwrap_or(0);
     let ext = j["request"]["extension"].as_str().unwrap().to_string();
+    if stage>=2&&j["request"]["sourceOnly"]!=true&&dir.join("original.md").is_file(){
+        let text=fs::read_to_string(dir.join("original.md"))?;
+        let re=regex::Regex::new(r"(?im)^\s*#{0,4}\s*TEST\s+([1-9][0-9]?)\b").unwrap();
+        let tests:std::collections::HashSet<_>=re.captures_iter(&text).map(|c|c[1].to_owned()).collect();
+        if text.len()>240000||tests.len()>1 {
+            let project=crate::source_library::recovery::adopt_from(root,&dir,j)?;
+            j["sourceProjectId"]=project["id"].clone();j["state"]=json!("source_required");j["error"]=Value::Null;
+            jobs::operation(root,j,"source_ready","整本资料已整理到资料库，可按 Test 继续；复用现有解析，未重新 OCR",1,1,"本")?;return Ok(());
+        }
+    }
     if stage >= 1 {
         let legacy = dir.join("upload-private.json");
         if legacy.exists() {

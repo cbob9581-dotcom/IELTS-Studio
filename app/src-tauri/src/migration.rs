@@ -56,7 +56,14 @@ pub fn copy_verified(s: &Store, target: StorageRoots) -> Result<Store> {
         }
     }
     if new_a != old_a {
-        copy_tree(&old_a, &new_a)?;
+        for entry in fs::read_dir(&old_a)? {
+            let entry=entry?;let name=entry.file_name();let text=name.to_string_lossy();
+            if [".task-engine.lock","task-runtime.sqlite3","task-runtime.sqlite3-wal","task-runtime.sqlite3-shm"].contains(&text.as_ref()){continue;}
+            if entry.file_type()?.is_symlink(){return Err(DesktopError::new("migration","资产目录有不支持的链接"));}
+            if entry.file_type()?.is_dir(){copy_tree(&entry.path(),&new_a.join(&name))?;}else{fs::copy(entry.path(),new_a.join(&name))?;if papers::hash(&fs::read(entry.path())?)!=papers::hash(&fs::read(new_a.join(&name))?){return Err(DesktopError::new("migration","资产文件校验失败"));}}
+        }
+        let queue=old_a.join("task-runtime.sqlite3");
+        if queue.exists(){let db=rusqlite::Connection::open_with_flags(queue,rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)?;db.backup(rusqlite::DatabaseName::Main,new_a.join("task-runtime.sqlite3"),None)?;let copied=rusqlite::Connection::open(new_a.join("task-runtime.sqlite3"))?;let integrity:String=copied.query_row("PRAGMA integrity_check",[],|r|r.get(0))?;if integrity!="ok"{return Err(DesktopError::new("migration","后台任务数据库完整性校验失败"));}}
     }
     if new_s != old_s {
         for e in fs::read_dir(&old_s)? {

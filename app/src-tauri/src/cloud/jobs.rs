@@ -151,3 +151,38 @@ pub fn content_approved(j: &Value) -> bool {
             h == crate::papers::hash(&serde_json::to_vec(&j["paper"]).unwrap_or_default())
         })
 }
+
+pub fn authorize_audio(j: &mut Value) -> Result<()> {
+    if j["kind"] != "generation" || j["state"] != "review_required" || !content_approved(j) {
+        return Err(error("题目和独立文字校审通过后，才能单独选择合成听力；当前不会调用 TTS"));
+    }
+    let fingerprint=j["textFingerprint"].as_str().filter(|s|!s.is_empty()).ok_or_else(||error("请先继续此旧任务，完成新版文字校验；不会调用 TTS"))?.to_owned();
+    if j["audioPending"]!=true {return Err(error("当前草稿没有待合成的听力音频"));}
+    j["audioAuthorization"]=json!({"materialHash":fingerprint,"reviewHash":j["validationHash"],"authorizedAt":now_ms()});
+    j["state"]=json!("pending");j["error"]=Value::Null;
+    Ok(())
+}
+pub fn check_audio_authorization(j: &Value, fingerprint: &str) -> Result<()> {
+    if !content_approved(j) || j["audioAuthorization"]["materialHash"]!=fingerprint || j["audioAuthorization"]["reviewHash"]!=j["validationHash"] {
+        return Err(error("尚未明确选择合成当前已校审文本，或文本已更改；TTS 请求未发送"));
+    }
+    Ok(())
+}
+pub fn retry_text(root:&Path,j:&mut Value)->Result<()> {
+ let stage=j["stage"].as_u64().unwrap_or(0) as usize;
+ if j["kind"]!="generation"||!["failed","paused"].contains(&j["state"].as_str().unwrap_or(""))||stage>=super::generation::stages(&j["request"])?.len(){return Err(error("此操作只重新请求失败的题目文字部分，不用于重做录音或整份试卷"));}
+ let folder=dir(root,j["id"].as_str().ok_or_else(||error("任务编号缺失"))?)?;
+ let archive=format!("history/text-retry-{}",uuid::Uuid::new_v4());let target=folder.join(&archive);fs::create_dir_all(&target)?;
+ atomic_json(&target.join("previous-status.json"),&summary(j))?;
+ let prefix=format!("part-{stage}");for item in fs::read_dir(&folder)?{let item=item?;let name=item.file_name().to_string_lossy().to_string();if item.path().is_file()&&(name==format!("{prefix}.json")||name.starts_with(&format!("{prefix}-"))||name.starts_with(&format!("{prefix}."))){fs::rename(item.path(),target.join(name))?;}}
+ j["lastTextRetryArchive"]=json!(archive);j["state"]=json!("pending");j["error"]=Value::Null;j["audioAuthorization"]=Value::Null;j["validation"]=Value::Null;j["textFingerprint"]=Value::Null;Ok(())
+}
+pub fn schedule_recheck(j:&mut Value)->Result<()>{if j["kind"]!="generation"||j["state"]!="review_required"||!j["paper"].is_object(){return Err(error("仅可重新校审待核对的生成卷"));}j["recheckOnly"]=json!(true);j["state"]=json!("pending");j["validation"]=Value::Null;j["validationHash"]=Value::Null;j["error"]=Value::Null;Ok(())}
+pub fn retry_assessment(root:&Path,j:&mut Value)->Result<()> {
+ if j["kind"]!="assessment"||!["failed","paused"].contains(&j["state"].as_str().unwrap_or("")){return Err(error("只能重新请求当前未完成的评测，已完成报告保留"));}
+ let folder=dir(root,j["id"].as_str().ok_or_else(||error("任务编号缺失"))?)?;let attempt:Value=serde_json::from_slice(&fs::read(folder.join("attempt.json"))?)?;let done=j["evaluations"].as_array().map_or(0,Vec::len);
+ let raw=if attempt["section"]=="speaking"{"speaking-session.response.txt".to_string()}else if attempt["section"]=="writing"{format!("writing-{done}-response.txt")}else{return Err(error("此科目不需要云端主观评测"));};
+ let archive=format!("history/assessment-retry-{}",uuid::Uuid::new_v4());let target=folder.join(&archive);fs::create_dir_all(&target)?;atomic_json(&target.join("previous-status.json"),&summary(j))?;
+ let response=folder.join(raw);for path in [response.clone(),response.with_extension("request.json")]{if path.exists(){fs::rename(&path,target.join(path.file_name().unwrap()))?;}}
+ j["lastAssessmentRetryArchive"]=json!(archive);j["stage"]=json!(if attempt["section"]=="writing"{done}else{0});j["state"]=json!("pending");j["error"]=Value::Null;Ok(())
+}

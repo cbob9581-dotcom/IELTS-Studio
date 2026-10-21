@@ -5,6 +5,7 @@ test("library practice does not inherit exam mode from home", async ({
   await page.goto("/");
   await page.getByRole("button", { name: /考试模式/ }).click();
   await page.getByRole("button", { name: "我的题库" }).click();
+  await page.getByRole("checkbox", { name: "显示开发测试素材" }).check();
   await page.getByRole("button", { name: "进入考场" }).first().click();
   await expect(page.getByRole("region", { name: "三维考场" })).toBeVisible();
 });
@@ -12,6 +13,7 @@ test("practice survives reload and submits into history", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /训练模式/ }).click();
   await page.getByRole("button", { name: "阅读", exact: true }).click();
+  await page.getByRole("checkbox", { name: "显示开发测试素材" }).check();
   await page.getByRole("button", { name: "进入考场" }).first().click();
   await page.getByRole("region", { name: "三维考场", exact:true }).focus();
   await page.keyboard.press("e");

@@ -15,6 +15,17 @@ export type PaperSummary = Pick<
   "id" | "version" | "title" | "status" | "provenance"
 > & { sections: Section[] };
 export interface DesktopPort {
+  taskEnqueue?(request:import('../tasks/types').TaskRequest):Promise<import('../tasks/types').BackgroundTask>;
+  taskRead?(id:string):Promise<import('../tasks/types').BackgroundTask>;
+  taskList?():Promise<import('../tasks/types').BackgroundTask[]>;
+  taskPause?(id:string):Promise<import('../tasks/types').BackgroundTask>;
+  taskCancel?(id:string):Promise<import('../tasks/types').BackgroundTask>;
+  taskResume?(id:string):Promise<import('../tasks/types').BackgroundTask>;
+  calibrationRead?():Promise<import('../tasks/CalibrationPanel').CalibrationSummary|null>;
+  calibrationImport?(path:string):Promise<import('../tasks/CalibrationPanel').CalibrationSummary>;
+  taskPolicyRead?():Promise<import('../tasks/TaskPolicyPanel').TaskPolicy>;
+  taskPolicySave?(policy:import('../tasks/TaskPolicyPanel').TaskPolicy):Promise<void>;
+  taskExamActive?(active:boolean):Promise<void>;
   prepareSourcePages?(id:string,documentId:string,pages:number[]):Promise<void>;
   releaseSourcePages?():void;
   sourceAction?(action: string, payload: Record<string, unknown>): Promise<any>;
@@ -40,6 +51,10 @@ export interface DesktopPort {
   cloudCancel(id: string): Promise<void>;
   cloudReview(id: string, paper: PaperVersion): Promise<CloudJob>;
   cloudRecheck?(id: string): Promise<CloudJob>;
+  cloudStartAudio?(id:string):Promise<CloudJob>;
+  cloudFixText?(id:string):Promise<CloudJob>;
+  cloudRetryText?(id:string):Promise<CloudJob>;
+  cloudRetryAudio?(id:string):Promise<CloudJob>;
   cloudPublish(id: string): Promise<CloudJob>;
   cloudAddMedia(id: string, path: string): Promise<CloudJob>;
   cloudTest(
@@ -51,6 +66,7 @@ export interface DesktopPort {
     turnId: string,
     text: string,
     requestId: string,
+    allowRetry?:boolean,
   ): Promise<ArrayBuffer>;
   recognizeSpeech(
     attemptId: string,
@@ -103,6 +119,17 @@ export interface DesktopPort {
   readAssetBinary?(id:string,version:number,assetId:string):Promise<ArrayBuffer>;
 }
 const native: DesktopPort = {
+  taskEnqueue:request=>invoke('task_enqueue',{request}),
+  taskRead:id=>invoke('task_read',{id}),
+  taskList:()=>invoke('task_list'),
+  taskPause:id=>invoke('task_pause',{id}),
+  taskCancel:id=>invoke('task_cancel',{id}),
+  taskResume:id=>invoke('task_resume',{id}),
+  calibrationRead:()=>invoke('calibration_read'),
+  calibrationImport:path=>invoke('calibration_import',{path}),
+  taskPolicyRead:()=>invoke('task_policy_read'),
+  taskPolicySave:policy=>invoke('task_policy_save',{policy}),
+  taskExamActive:active=>invoke('task_exam_active',{active}),
   readAssetBinary:(id,version,assetId)=>invoke('read_asset_binary',{id,version,assetId}),
   prepareSourcePages:async(id,documentId,pages)=>{const m=await import("../source/pdfPages");await m.prepareSourcePages(native,id,documentId,pages);},
   releaseSourcePages:()=>{void import("../source/pdfPages").then(m=>m.releaseSourcePages(native));},
@@ -128,11 +155,15 @@ const native: DesktopPort = {
   cloudReview: (id, paper) => invoke("cloud_review", { id, paper }),
   cloudPublish: (id) => invoke("cloud_publish", { id }),
   cloudRecheck: (id) => invoke("cloud_recheck", { id }),
+  cloudStartAudio: (id) => invoke("cloud_audio_start", { id }),
+  cloudFixText: (id) => invoke("cloud_fix_text", { id }),
+  cloudRetryText: (id) => invoke("cloud_retry_text", { id }),
+  cloudRetryAudio: (id) => invoke("cloud_retry_audio", { id }),
   cloudAddMedia: (id, path) => invoke("cloud_add_media", { id, path }),
   cloudTest: (provider) => invoke("cloud_test", { provider }),
   cloudAsset: (id, assetId) => invoke("cloud_asset", { id, assetId }),
-  synthesizeSpeech: (attemptId, turnId, text, requestId) =>
-    invoke("speech_synthesize", { attemptId, turnId, text, requestId }),
+  synthesizeSpeech: (attemptId, turnId, text, requestId,allowRetry=false) =>
+    invoke("speech_synthesize", { attemptId, turnId, text, requestId,allowRetry }),
   recognizeSpeech: (attemptId, takeId, requestId) =>
     invoke("speech_recognize", { attemptId, takeId, requestId }),
   examinerQuestion: (prompt, previous, part, requestId) =>

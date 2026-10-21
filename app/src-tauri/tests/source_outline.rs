@@ -1,6 +1,19 @@
 use ielts_core::source_library::outline;
 use serde_json::json;
 #[test]
+fn older_books_use_sections_tapescripts_and_academic_headings_without_including_general_training(){
+ let blocks=json!([
+ {"page":1,"text":"Practice Test 1"},{"page":1,"text":"LISTENING"},{"page":1,"text":"SECTION 1"},{"page":1,"text":"Questions 1-10"},
+ {"page":2,"text":"ACADEMIC READING"},{"page":2,"text":"READING PASSAGE 1"},{"page":2,"text":"A source passage."},
+ {"page":3,"text":"TAPESCRIPTS"},{"page":3,"text":"TEST 1"},{"page":3,"text":"SECTION 1"},{"page":3,"text":"MAN: Hello."},
+ {"page":4,"text":"TEST A WRITING TASK 1 (GENERAL TRAINING)"},{"page":4,"text":"WRITING TASK 1"},{"page":4,"text":"Write a letter."}
+ ]);
+ let units=outline::derive(blocks.as_array().unwrap(),&json!(["mixed"]));
+ assert!(units.iter().any(|u|u["section"]=="listening"&&u["role"]=="questions"));
+ assert!(units.iter().any(|u|u["section"]=="listening"&&u["role"]=="transcript"));
+ assert!(!units.iter().any(|u|u["end"].as_u64().unwrap()>=11));
+}
+#[test]
 fn audioscripts_keep_listening_across_tests() {
  let b=json!([
  {"text":"Audioscripts","page":90},{"text":"TEST 1","page":90},

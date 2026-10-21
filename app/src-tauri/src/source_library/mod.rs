@@ -8,6 +8,8 @@ pub mod question_check;
 pub mod transcripts;
 pub mod audio_assets;
 pub mod audio_jobs;
+pub mod recovery;
+pub mod provenance;
 use crate::{
     contracts::{now_ms, valid_id, DesktopError, Result},
     storage::atomic_json,
@@ -113,7 +115,7 @@ pub fn add_document(root: &Path, p: &mut Value, path: &Path, roles: Value) -> Re
         .unwrap_or("")
         .to_ascii_lowercase();
     if ![
-        "pdf", "png", "jpg", "jpeg", "webp", "txt", "md", "wav", "mp3", "ogg",
+        "pdf", "png", "jpg", "jpeg", "webp", "txt", "md", "wav", "mp3", "ogg", "doc", "docx", "ppt", "pptx",
     ]
     .contains(&ext.as_str())
     {
@@ -243,6 +245,6 @@ pub fn finish_step(p:&mut Value,next:Value,target:&str,failure:Option<DesktopErr
     if let Some(e)=failure {
         let key=if p["documents"].as_array().into_iter().flatten().any(|d|d["id"]==target){"documents"}else{"units"};
         let item=p[key].as_array_mut().into_iter().flatten().find(|d|d["id"]==target).ok_or_else(||err("资料条目不存在"))?;
-        item["state"]=json!("failed");item["error"]=json!(e.message);
+        item["state"]=json!("failed");item["errorCode"]=json!(e.code);item["error"]=json!(e.message);
     }else{*p=next;} Ok(())
 }

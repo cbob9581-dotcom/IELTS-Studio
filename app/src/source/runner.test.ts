@@ -1,6 +1,13 @@
 import { it, expect } from "vitest";
 import { sourceRunner } from "./runner";
 import type { DesktopPort } from "../platform/desktop";
+import {vi} from 'vitest';
+it('native source execution receives prepared original pages and never calls sourceStep from the UI',async()=>{
+ const events:string[]=[];const p:any={id:'native-book',documents:[{id:'d',extension:'pdf'}],units:[{id:'u',documentId:'d',start:0,end:0,state:'pending'}]};
+ const task={id:'queue-source',kind:'source',owner:p.id,targets:['u'],completed:[],state:'queued',title:'Book',createdAt:0,updatedAt:0};
+ const port={sourceAction:async(action:string)=>action==='blocks'?[{id:'b1',page:28,imageAssetId:'crop'}]:p,prepareSourcePages:async()=>{events.push('original-page');},taskEnqueue:async()=>{events.push('enqueue');return task;},taskRead:async()=>({...task,state:'ready'}),sourceStep:vi.fn()} as unknown as DesktopPort;
+ await sourceRunner(port).run(p,['u']);expect(events).toEqual(['original-page','enqueue']);expect(port.sourceStep).not.toHaveBeenCalled();
+});
 it('prepares original PDF page images before a figure-bearing unit is extracted',async()=>{
  const events:string[]=[];const p:any={id:'p',documents:[{id:'d',extension:'pdf'}],units:[{id:'u',documentId:'d',start:0,end:0,state:'pending'}]};
  const port={sourceAction:async(action:string)=>action==='blocks'?[{id:'b1',page:28,imageAssetId:'crop'}]:p,prepareSourcePages:async()=>{events.push('original-page');},sourceStep:async()=>{events.push('extract');return {...p,units:[{...p.units[0],state:'complete'}]};}} as unknown as DesktopPort;

@@ -22,70 +22,77 @@ pub fn count(section: &str, part: u64) -> usize {
         _ => 0,
     }
 }
-pub fn prompt(section: &str, part: u64, kind: Option<&str>, topic: &str) -> Result<String> {
-    let max = match section {
-        "listening" => 4,
-        "reading" | "speaking" => 3,
-        "writing" => 2,
-        _ => 0,
-    };
-    if part < 1 || part > max || topic.len() > 1000 {
-        return Err(error("科目、部分或主题无效"));
+pub fn question_plan(section:&str,part:u64,kind:Option<&str>)->Vec<Value> { question_plan_variant(section,part,kind,0) }
+pub fn question_plan_variant(section:&str,part:u64,kind:Option<&str>,seed:u64)->Vec<Value> {
+    let total=count(section,part); let mut out=Vec::new(); let mut number=1;
+    while number<=total {
+        let variant=if section=="reading"&&seed%3==1 {Some(if number<=6 {"heading_match"}else{"gap_fill"})}else if section=="reading"&&seed%3==2 {Some(if number<=5 {"matching"}else if number<=10 {"true_false_not_given"}else{"short_answer"})}else{None};
+        let k=kind.or(variant).unwrap_or(match section {
+            "listening" if part==1||part==4=>"gap_fill",
+            "listening" if part==2&&number>5=>"matching",
+            "listening" if part==3&&number>=7=>"gap_fill",
+            "listening" if part==3&&number==5=>"multiple_choice",
+            "listening"=>"single_choice",
+            "reading" if part==1&&number<=5=>"true_false_not_given",
+            "reading" if part==2&&number<=6=>"heading_match",
+            "reading" if part==3&&number<=5=>"yes_no_not_given",
+            "reading" if part==1&&number<=8||part==3&&number<=10=>"single_choice",
+            "reading"=>"gap_fill", "writing"=>"writing_task", _=>"speaking_prompt"
+        });
+        let points=if ["writing","speaking"].contains(&section){0}else if k=="multiple_choice"{if total-number+1==3{3}else{2.min(total-number+1)}}else{1};
+        let width=points.max(1);out.push(json!({"number":number,"part":part,"kind":k,"points":points,"coveredNumbers":(number..number+width).collect::<Vec<_>>()})); number+=width;
+    } out
+}
+pub fn prompt(section: &str, part: u64, kind: Option<&str>, topic: &str) -> Result<String> { prompt_for_request(section,part,kind,topic,&json!({})) }
+pub fn prompt_for_request(section: &str, part: u64, kind: Option<&str>, topic: &str,request:&Value) -> Result<String> {
+    let max=match section{"listening"=>4,"reading"|"speaking"=>3,"writing"=>2,_=>0};
+    if part<1||part>max||topic.len()>1000{return Err(error("科目、部分或主题无效"))}
+    let allowed=match section{
+        "reading"=>vec!["single_choice","multiple_choice","matching","gap_fill","short_answer","diagram_label","true_false_not_given","yes_no_not_given","heading_match"],
+        "listening"=>vec!["single_choice","multiple_choice","matching","gap_fill","short_answer","diagram_label"],
+        "writing"=>vec!["writing_task"],_=>vec!["speaking_prompt"]};
+    if kind.is_some_and(|k|!allowed.contains(&k)){return Err(error("此科目不支持所选题型"))}
+    let plan=question_plan_variant(section,part,kind,request["blueprintSeed"].as_u64().unwrap_or(0));
+    let mut contracts=Vec::new();
+    for k in &allowed { if !plan.iter().any(|q|q["kind"]==*k){continue;}
+      contracts.push(match *k {
+       "multiple_choice"=>"multiple_choice: options=[full option strings], answer={accepted:[[full option A,full option C]],caseSensitive:false}. One question object per group, points is group size.",
+       "single_choice"|"heading_match"=>"single_choice/heading_match: options=[full option strings], answer={accepted:[one full correct option],caseSensitive:false}.",
+       "matching"=>"matching: ONE slot per numbered item. slots=[slot text], options=[full option strings], answer={accepted:[{slot text:full correct option}],caseSensitive:false}.",
+       "gap_fill"|"short_answer"=>"gap_fill/short_answer: prompt includes explicit word/number limit and complete context with ____ blank; answer={accepted:[correct response],caseSensitive:false,maxWords:3,maxNumbers:1}. Choose exact source answers of at most three words and state matching instructions.",
+       "true_false_not_given"=>"true_false_not_given: answer={accepted:[TRUE or FALSE or NOT GIVEN],caseSensitive:false}. No options or slots.",
+       "yes_no_not_given"=>"yes_no_not_given: answer={accepted:[YES or NO or NOT GIVEN],caseSensitive:false}. No options or slots.",
+       "diagram_label"=>"diagram_label: visual={title,items:[{id,text,x,y}],connections:[{from,to}]}, all x/y normalized 0.15..0.85. Answer nodes show question number/blank, never answers. Each question has labels=[{id,x,y}], answer={accepted:[{labelId:answer}],caseSensitive:false,maxWords:2}. Application assigns imageAssetId.",
+       "writing_task"=>"writing_task: minWords=150 for Task1, 250 for Task2; prompt says Write at least ... words. No answer/options/slots.",
+       _=>"speaking_prompt: English prompt, no answer/options/slots."
+      });
     }
-    let allowed = match section {
-        "listening" => vec![
-            "single_choice",
-            "multiple_choice",
-            "matching",
-            "gap_fill",
-            "short_answer",
-            "diagram_label",
-        ],
-        "reading" => vec![
-            "single_choice",
-            "multiple_choice",
-            "matching",
-            "gap_fill",
-            "short_answer",
-            "diagram_label",
-            "true_false_not_given",
-            "yes_no_not_given",
-            "heading_match",
-        ],
-        "writing" => vec!["writing_task"],
-        _ => vec!["speaking_prompt"],
-    };
-    if kind.is_some_and(|k| !allowed.contains(&k)) {
-        return Err(error("此科目不支持所选题型"));
+    let mut skeleton_questions=Vec::new();
+    for item in &plan {
+      let mut q=json!({"id":format!("q{}",item["number"]),"number":item["number"],"part":part,"kind":item["kind"],"prompt":"Complete English question instructions and context","points":item["points"],"evidence":["Exact continuous source quotation"]});
+      let k=item["kind"].as_str().unwrap();
+      if ["writing_task","speaking_prompt"].contains(&k){if k=="writing_task"{q["minWords"]=json!(if part==1{150}else{250});}}
+      else {
+        q["answer"]=json!({"accepted":["response"],"caseSensitive":false});
+        if ["gap_fill","short_answer","diagram_label"].contains(&k){q["answer"]["maxWords"]=json!(if k=="diagram_label"{2}else{3});q["answer"]["maxNumbers"]=json!(1);}
+        if ["single_choice","multiple_choice","matching","heading_match"].contains(&k){q["options"]=json!(["A. first option","B. second option","C. third option"]);q["answer"]["accepted"]=json!(["A. first option"]);}
+        if k=="multiple_choice"{q["options"]=json!(["A. first","B. second","C. third","D. fourth","E. fifth"]);q["answer"]["accepted"]=json!([q["options"].as_array().unwrap()[..item["points"].as_u64().unwrap() as usize].to_vec()]);}
+        if k=="matching"{q["slots"]=json!(["item to match"]);q["answer"]["accepted"]=json!([{"item to match":"A. first option"}]);}
+        if k=="true_false_not_given"{q["answer"]["accepted"]=json!(["TRUE"]);}
+        if k=="yes_no_not_given"{q["answer"]["accepted"]=json!(["YES"]);}
+        if k=="diagram_label"{q["labels"]=json!([{"id":format!("label{}",item["number"]),"x":0.3,"y":0.5}]);q["answer"]["accepted"]=json!([{format!("label{}",item["number"]):"response"}]);}
+      }
+      if !["writing_task","speaking_prompt"].contains(&k){q.as_object_mut().unwrap().remove("evidence");q["evidenceSourceIds"]=json!([if section=="listening"{"t2"}else{"p1"}]);}
+      skeleton_questions.push(q);
     }
-    let mut example = json!({"paragraphs":[{"id":"p1","part":part,"text":"Passage text; never answers in a student instruction paragraph."}],"questions":[{"id":"q1","number":1,"part":part,"kind":allowed[0],"prompt":"Question and exact answer/word-limit instructions","points":1,"evidence":["Exact supporting quotation from passage/transcript"],"options":["A. one","B. two","C. three"],"answer":{"accepted":["A. one"],"caseSensitive":false}}],"transcript":[],"visual":null});
-    if let Some(k) = kind {
-        example["questions"][0]["kind"] = json!(k);
-        if ["gap_fill", "short_answer"].contains(&k) {
-            let q = &mut example["questions"][0];
-            q.as_object_mut().unwrap().remove("options");
-            q["prompt"] =
-                json!("Write NO MORE THAN TWO WORDS AND/OR A NUMBER. Complete: ... ____ ...");
-            q["answer"] = json!({"accepted":["example answer"],"caseSensitive":false,"maxWords":2,"maxNumbers":1});
-        }
+    let mut skeleton=json!({"paragraphs":if section=="reading"{json!([{"id":"p1","part":part,"text":"Complete academic passage"}])}else{json!([])},"questions":skeleton_questions,"transcript":if section=="listening"{json!([{"id":"t1","speaker":2,"text":"Narrator reading instructions"},{"id":"t2","speaker":0,"text":"Complete speaker utterance"},{"id":"t3","speaker":1,"text":"Other speaker reply for dialogue parts only"}])}else{json!([])},"visual":if section=="writing"&&part==1{json!({"title":"Context and units","columns":["Category","2019 (thousands)","2023 (thousands)"],"rows":[["First","10","20"],["Second","30","40"],["Third","50","60"]]})}else{Value::Null}});
+    let mut protocol=include_str!("prompts/generation.md").to_string();
+    if section=="writing"&&part==1{
+      skeleton["visual"]=super::visuals::template(request["visualKind"].as_str().unwrap_or("table"))?;
+      protocol=protocol.replace("Task 1 requires a table visual {title,columns,rows}, 3–8 rows, 2–5 columns.","Task 1 requires the requested visual kind and outputSkeleton structure. Use English labels, explicit units, consistent data, and realistic category/time/place context. For map coordinates x/y/width/height are normalized to 0..1; features must stay in bounds. Process connections must reference actual step IDs.");
     }
-    if ["writing", "speaking"].contains(&section) {
-        example["paragraphs"] = json!([]);
-        example["questions"] = json!([{"id":"q1","number":part,"part":part,"kind":allowed[0],"prompt":"English task instructions and question","points":0,"evidence":[]}]);
-        if section == "writing" {
-            example["questions"][0]["minWords"] = json!(if part == 1 { 150 } else { 250 });
-        }
-    }
-    let requirements=match section {
-        "reading"=>"Write ONE original academic passage of 650-900 words with labelled paragraphs; varied factual, descriptive, discursive content. Answer evidence must quote exact passage spans. TRUE/FALSE/NOT GIVEN are facts; YES/NO/NOT GIVEN are writer claims. Headings use full option strings. Each numbered answer is one mark. A Choose TWO/THREE group has points=2/3 and accepted is an array containing the full correct option set; its prompt names every covered number. Other items points=1. Gap fill = note/summary/sentence/table/flow chart completion; supply explicit NO MORE THAN N WORDS AND/OR A NUMBER and maxWords/maxNumbers. Matching uses one slot per numbered question with accepted an object keyed by slot. Do not test outside knowledge.",
-        "listening"=>"Create 10 original numbered items in the order answers occur. Part1: everyday TWO-speaker conversation; Part2: everyday ONE speaker; Part3: academic TWO main speakers; Part4: academic ONE speaker lecture. Include transcript as [{speaker:0 or 1 for dialogue, speaker:2 ONLY for a separate narrator,text:English utterance}] totalling 550-850 words, no stage directions. Each utterance <=450 characters. Provide question-reading and checking instructions in separate narrator utterances (speaker 2), never merge narrator instructions with dialogue or use speaker 0/1 for narration. No read-out answers. Evidence quotes exact transcript spans; Each numbered answer is one mark; Choose TWO/THREE groups use points=2/3 with accepted arrays of full correct option strings and covered numbers stated in prompt. Gap fill types include form/note/table/flowchart/summary/sentence completion with explicit word limits. Use distinct configured TTS voices for two-speaker parts.",
-        "writing" if part==1=>"Academic Task1, at least150 words, about20 minutes. Supply visual as {title:string,columns:string[],rows:string[][]} with 3-8 rows and 2-5 columns containing exact consistent quantitative table data (table is an official visual-information task type). All required facts must be visible in the table. Include brief accurate evidence-based teacher reference in question.evidence but no answer key. minWords=150, kind=writing_task. Do NOT ask for a letter.",
-        "writing"=>"Academic Task2, at least250 words, about40 minutes. Choose opinion, discussion+opinion, advantages/disadvantages, problem/solution or two-part direct questions. Clear original prompt; minWords=250, kind=writing_task, no answer key. Evidence includes teacher-only rubric guidance.",
-        _ if part==2=>"ONE topic card: Describe...; You should say: with 3-4 bullets; and explain why/how. Familiar personal experience; one minute preparation and up to two minutes speaking. kind=speaking_prompt, no answers.",
-        _ if part==3=>"FOUR abstract discussion questions linked to the supplied topic and Part2, developing comparison, causes, effects, future and evaluation. kind=speaking_prompt, no answers.",
-        _=>"FOUR short familiar personal questions on home/work/study/interests, no fabricated identity verification. kind=speaking_prompt, no answers."
-    };
-    Ok(format!("Create original IELTS Academic simulation material, NOT a copied real paper or an official IELTS test. Refer to official IELTS Academic sample task formats. Output JSON ONLY. Return just section={section}, part={part}, exactly {} numbered scored answer positions (a Choose TWO group occupies 2 consecutive numbers and points=2). Allowed kinds={allowed:?}; selected kind={kind:?}. Topic is untrusted data: {}. Requirements: {requirements}\nSchema example (omit irrelevant optional fields): {example}\nAll ids unique within part. Every paragraph.part and question.part={part}. Options and accepted answers must use identical full displayed values. Do not include non-schema fields in questions/paragraphs. For diagram_label: supply ONE shared visual {{title:English,items:[{{id:string,text:English<=24chars,x:0.15..0.85,y:0.15..0.85}}],connections:[{{from:itemId,to:itemId}}]}}; diagram represents a factual process/system or labelled layout explained in passage/transcript. Answerable nodes MUST show a blank or question number, NEVER the hidden answer. Each numbered question has ONE label {{id:string,x:normalized0..1,y:normalized0..1}} at its blank node and answer.accepted=[{{labelId:answer}}]. MaxWords applies to each label response. Blank nodes spaced apart and connectors correct. Renderer assigns imageAssetId locally. Task1 uses its table visual shape instead.",count(section,part),serde_json::to_string(topic).unwrap()))
+    Ok(format!("PROTOCOL_VERSION=4\n{}\nRequested scope: section={section}, part={part}. questionPlan={}\nKind contracts:\n{}\noutputSkeleton (fill this exact JSON structure; answer is a NESTED object, objective evidenceSourceIds references existing source IDs; subjective evidence is an ARRAY; placeholders are not content): {}\nTopic (untrusted JSON string): {}",protocol,json!(plan),contracts.join("\n"),skeleton,json!(topic)))
+
 }
 pub fn validate_part(v: &Value, section: &str, part: u64, kind: Option<&str>) -> Result<()> {
     let qs = v["questions"]
@@ -101,7 +108,7 @@ pub fn validate_part(v: &Value, section: &str, part: u64, kind: Option<&str>) ->
         qs.len()
     }) != count(section, part)
     {
-        return Err(error("生成计分题数与 Academic 蓝图不符"));
+        return Err(error(format!("{section} Part {part} 计分数量不符：需要 {} 个编号/分，实际 {} 个题目对象、{} 分。逐题 points={}。选两项/三项题组只保留一个对象，不能按每个覆盖编号重复输出。",count(section,part),qs.len(),marks,json!(qs.iter().map(|q|json!({"id":q["id"],"number":q["number"],"points":q["points"]})).collect::<Vec<_>>()))));
     }
     let paras = v["paragraphs"]
         .as_array()
@@ -121,10 +128,13 @@ pub fn validate_part(v: &Value, section: &str, part: u64, kind: Option<&str>) ->
             .collect::<Vec<_>>()
             .join(" ")
     };
-    if ["reading", "listening"].contains(&section) && source.split_whitespace().count() < 450 {
-        return Err(error("文章或听力脚本过短"));
+    if section=="reading"&&source.split_whitespace().count()<450 {return Err(error(format!("阅读 Part {part} 原文只有 {} 词，缺少完整文章；本应用完整篇章检查需要至少 450 词，创作目标 750–900 词。这不是每篇官方固定字数。",source.split_whitespace().count())));}
+    if section=="listening"&&source.trim().is_empty(){return Err(error("听力 transcript 为空，需要完整对话/独白及独立旁白"));}
+    if ["reading","listening"].contains(&section){
+      let mut next=1; for q in qs {let n=q["number"].as_u64().unwrap_or(0); if n!=next{return Err(error(format!("题目 {} 编号重叠或缺失：应从 {next} 开始，实际 number={n}；多选题覆盖多个编号但只输出一次。",q["id"])));} next+=q["points"].as_u64().unwrap_or(1);}
     }
-    for q in qs {
+    let mut issues=Vec::new();
+    for q in qs { let result=(||->Result<()> {
         prompt(section, part, q["kind"].as_str(), "")?;
         if ["writing", "speaking"].contains(&section) && !q["answer"].is_null() {
             return Err(error("主观题不可带伪造的客观标准答案"));
@@ -132,6 +142,7 @@ pub fn validate_part(v: &Value, section: &str, part: u64, kind: Option<&str>) ->
         if q["part"] != part || kind.is_some_and(|k| q["kind"] != k) {
             return Err(error("生成内容偏离所选部分/题型"));
         }
+        if q["kind"]=="matching"&&q["slots"].as_array().is_none_or(|a|a.is_empty()) {return Err(error(format!("题目 {} 标成 matching，但缺少 slots 匹配项目；若为单项选择，kind 应为 single_choice。",q["id"])));}
         if ["reading", "listening"].contains(&section) {
             let pts = q["points"]
                 .as_u64()
@@ -162,15 +173,26 @@ pub fn validate_part(v: &Value, section: &str, part: u64, kind: Option<&str>) ->
                         .is_none_or(|s| s.trim().len() < 5 || !source.contains(s))
                 })
             {
-                return Err(error("答案依据不是原文/脚本中的实际引文"));
+                return Err(error(format!("题目 {} evidence 中以下引文不在原文/脚本中：{}。请使用 evidenceSourceIds 指向该答案所在的段落/发言 ID，程序将提取真实原文；不要重新抄写引文。",q["id"],json!(evidence.iter().filter(|e|e.as_str().is_none_or(|s|!source.contains(s))).collect::<Vec<_>>()))));
             }
             if ["gap_fill", "short_answer"].contains(&q["kind"].as_str().unwrap_or(""))
                 && q["answer"]["maxWords"].as_u64().is_none()
             {
-                return Err(error("填空和简答题必须声明字数上限"));
+                return Err(error(format!("题目 {} 填空/简答缺少明确字数上限 maxWords，需要与题干限制一致。",q["id"])));
+            }
+            if ["gap_fill", "short_answer"].contains(&q["kind"].as_str().unwrap_or("")) {
+                for answer in q["answer"]["accepted"].as_array().unwrap().iter().filter_map(Value::as_str) {
+                    let words=answer.split_whitespace().filter(|s|s.chars().any(char::is_alphabetic)).count() as u64;
+                    if words>q["answer"]["maxWords"].as_u64().unwrap_or(u64::MAX) {
+                        return Err(error(format!("题目 {} 答案 {:?} 有 {words} 个词，超过题干字数上限 {}；请修正题干/答案一致性，不要只补元数据。",q["id"],answer,q["answer"]["maxWords"])));
+                    }
+                }
             }
         }
+        Ok(())
+        })();if let Err(e)=result{issues.push(e.message);}
     }
+    if !issues.is_empty(){return Err(error(issues.join("\n")));}
     if section == "listening" {
         let ts = v["transcript"].as_array().unwrap();
         if ts.iter().any(|t| {
@@ -191,15 +213,91 @@ pub fn validate_part(v: &Value, section: &str, part: u64, kind: Option<&str>) ->
     if section == "writing" && qs[0]["minWords"] != if part == 1 { 150 } else { 250 } {
         return Err(error("写作字数要求不正确"));
     }
+    if section=="writing"&&part==1{super::visuals::render(&v["visual"])?;}
+    if qs.iter().any(|q|q["kind"]=="diagram_label"){diagram_png(&v["visual"])?;}
+    let mut local_questions=qs.clone();let mut local_assets=Vec::new();
+    for q in &mut local_questions {if q["kind"]=="diagram_label"||section=="writing"&&part==1 {
+        q["imageAssetId"]=json!("local-visual");if local_assets.is_empty(){local_assets.push(json!({"id":"local-visual","path":"media/local.png","sha256":"0".repeat(64),"mediaType":"image/png"}));}
+    }}
+    let paper=json!({"schemaVersion":1,"id":"text-contract-check","version":1,"title":"Text contract check","testType":"academic","status":"review_required","provenance":{"kind":"ai_generated","source":"unpublished structural validation"},"assets":local_assets,"sections":[{"section":section,"title":"Text check","durationMs":1000,"timingSource":"unpublished","paragraphs":paras,"questions":local_questions}]});
+    crate::papers::validate(&paper)?;
     Ok(())
 }
+
+/// Original generation only: preserve source and answers, compile visible word limits consistently.
+pub fn reconcile_generated_limits(v:&mut Value)->Result<()> {
+ let re=regex::Regex::new(r"(?i)\bNO\s+MORE\s+THAN\s+(ONE|TWO|THREE)\s+WORDS?\b").unwrap();
+ for q in v["questions"].as_array_mut().ok_or_else(||error("缺少题目列表"))? {
+  if !["gap_fill","short_answer"].contains(&q["kind"].as_str().unwrap_or("")){continue;}
+  let needed=q["answer"]["accepted"].as_array().into_iter().flatten().filter_map(Value::as_str).map(|s|s.split_whitespace().filter(|s|s.chars().any(char::is_alphabetic)).count()).max().unwrap_or(0);
+  if needed>3{return Err(error(format!("原创题 {} 的答案超过本蓝图三词上限，请缩短答案或调整设问；原文和答案未被程序改写",q["id"])));}
+  let prompt=q["prompt"].as_str().unwrap_or("").to_owned();if let Some(caps)=re.captures(&prompt){let old=match caps[1].to_uppercase().as_str(){"ONE"=>1,"TWO"=>2,_=>3};let limit=old.max(needed);if limit>old{let new=match limit{1=>"ONE",2=>"TWO",_=>"THREE"};q["prompt"]=json!(re.replace_all(&prompt,format!("NO MORE THAN {new} WORDS")).to_string());}q["answer"]["maxWords"]=json!(limit);}
+ }Ok(())
+}
+pub fn normalize_generated(v:&mut Value,section:&str,part:u64)->Result<()>{normalize_metadata(v,section,part)?;reconcile_generated_limits(v)}
 pub fn normalize_metadata(v: &mut Value, section: &str, part: u64) -> Result<()> {
+    let mut source_map=std::collections::BTreeMap::new();
+    for (field,prefix) in [("paragraphs","p"),("transcript","t")]{
+        if let Some(items)=v[field].as_array_mut(){for (i,item) in items.iter_mut().enumerate(){
+            if item["id"].is_null(){item["id"]=json!(format!("{prefix}{}",i+1));}
+            if field=="paragraphs"&&item["part"].is_null(){item["part"]=json!(part);}
+            let id=item["id"].as_str().ok_or_else(||error("来源段落/发言 id 必须是字符串"))?.to_owned();
+            let text=item["text"].as_str().ok_or_else(||error("来源段落/发言缺少 text"))?.to_owned();
+            if source_map.insert(id.clone(),(text,item["speaker"]==2)).is_some(){return Err(error(format!("来源 ID {id} 重复，证据无法唯一绑定")));}
+        }}
+    }
+    let mut source_refs=v["evidenceSourceRefs"].as_object().cloned().unwrap_or_default();
+    if let Some(qs)=v["questions"].as_array_mut(){
+      let mut normalized:Vec<Value>=Vec::new();
+      for mut q in std::mem::take(qs){
+        if !q.is_object(){return Err(error("questions 中每项必须是题目对象"));}
+        if let Some(refs)=q.get("evidenceSourceIds").cloned(){
+            let ids=refs.as_array().filter(|a|!a.is_empty()&&a.len()<=6).ok_or_else(||error(format!("题目 {} evidenceSourceIds 需有 1–6 个来源 ID",q["id"])))?;
+            let mut evidence=Vec::new();for id in ids {
+                let id=id.as_str().ok_or_else(||error("证据来源 ID 必须为字符串"))?;
+                let (text,narrator)=source_map.get(id).ok_or_else(||error(format!("题目 {} 引用了不存在的来源 {id}；可用 ID：{}",q["id"],source_map.keys().cloned().collect::<Vec<_>>().join(","))))?;
+                if section=="listening"&&*narrator{return Err(error(format!("题目 {} 引用了旁白 {id}，答案依据必须来自实际对话/独白",q["id"])));}
+                evidence.push(text.clone());
+            }
+            source_refs.insert(q["id"].as_str().unwrap_or("unknown").to_owned(),refs);q["evidence"]=json!(evidence);q.as_object_mut().unwrap().remove("evidenceSourceIds");
+        }
+        if q["answer"].is_null()&&q["accepted"].is_array(){q["answer"]=json!({});}
+        if q["answer"].is_object(){for field in ["accepted","caseSensitive","maxWords","maxNumbers"]{
+            if let Some(value)=q.get(field).cloned(){if !q["answer"][field].is_null()&&q["answer"][field]!=value{return Err(error(format!("题目 {} 的 {field} 在题目与 answer 内相互矛盾",q["id"])));}q["answer"][field]=value;q.as_object_mut().unwrap().remove(field);}
+        }}
+          if ["matching","diagram_label"].contains(&q["kind"].as_str().unwrap_or(""))&&q["answer"]["accepted"].is_object(){q["answer"]["accepted"]=json!([q["answer"]["accepted"].clone()]);}
+          if let Some(e)=q["evidence"].as_str().map(str::to_owned){q["evidence"]=json!([e]);}
+
+        if q["kind"]=="multiple_choice"&&q["points"].as_u64().is_some_and(|n|n>1){
+          if let Some(a)=q["answer"]["accepted"].as_array().filter(|a|a.iter().all(Value::is_string)).cloned(){q["answer"]["accepted"]=json!([a]);}
+          let n=q["number"].as_u64().unwrap_or(0);
+          let duplicate=normalized.iter().any(|prior|{
+            let start=prior["number"].as_u64().unwrap_or(0);let width=prior["points"].as_u64().unwrap_or(0);
+            if prior["kind"]!="multiple_choice"||n<=start||n>=start+width{return false;}
+            let mut a=prior.clone();let mut b=q.clone();for key in ["id","number"]{a.as_object_mut().unwrap().remove(key);b.as_object_mut().unwrap().remove(key);}a==b
+          });if duplicate{continue;}
+        }
+        normalized.push(q);
+      } *qs=normalized;
+    }
     for q in v["questions"]
         .as_array_mut()
         .ok_or_else(|| error("缺少题目"))?
     {
         if !q.is_object() {
             return Err(error("每道题目必须是JSON对象"));
+        }
+        if q["answer"]["accepted"].is_array() {
+            if q["answer"]["caseSensitive"].is_null(){q["answer"]["caseSensitive"]=json!(false);}
+            if ["gap_fill","short_answer"].contains(&q["kind"].as_str().unwrap_or(""))&&q["answer"]["maxWords"].is_null(){
+                let text=q["prompt"].as_str().unwrap_or("").to_uppercase();
+                let re=regex::Regex::new(r"\b(ONE|TWO|THREE|FOUR|FIVE|[1-9])\s+WORDS?\b").unwrap();
+                if let Some(c)=re.captures(&text){let limit=match &c[1]{"ONE"=>1,"TWO"=>2,"THREE"=>3,"FOUR"=>4,"FIVE"=>5,n=>n.parse::<u64>().unwrap()};q["answer"]["maxWords"]=json!(limit);}
+                if text.contains("A NUMBER"){q["answer"]["maxNumbers"]=json!(1);}
+            }
+        }
+        if q["kind"]=="matching"&&q["slots"].is_null()&&q["prompt"].as_str().is_some_and(|s|s.to_uppercase().contains("CHOOSE ONE"))&&q["answer"]["accepted"].as_array().is_some_and(|a|!a.is_empty()&&a.iter().all(|v|v.is_string()&&q["options"].as_array().is_some_and(|opts|opts.contains(v)))) {
+            q["kind"]=json!("single_choice");
         }
         for name in ["maxWords", "maxNumbers"] {
             if let Some(value) = q.get(name).cloned() {
@@ -214,6 +312,7 @@ pub fn normalize_metadata(v: &mut Value, section: &str, part: u64) -> Result<()>
             }
         }
     }
+    v["evidenceSourceRefs"]=Value::Object(source_refs);
     if section == "writing" {
         for q in v["questions"]
             .as_array_mut()
@@ -478,4 +577,36 @@ pub fn diagram_png(v: &Value) -> Result<Vec<u8>> {
         writer.write_image_data(&pixels).map_err(error)?;
     }
     Ok(bytes)
+}
+
+pub fn stages(req: &Value) -> Result<Vec<(String, u64)>> {
+    let sections = if req["section"] == "all" {
+        vec!["listening", "reading", "writing", "speaking"]
+    } else {
+        vec![req["section"].as_str().ok_or_else(|| error("请选择科目"))?]
+    };
+    let mut out = Vec::new();
+    for s in sections {
+        let max = match s {
+            "listening" => 4,
+            "reading" | "speaking" => 3,
+            "writing" => 2,
+            _ => return Err(error("科目无效")),
+        };
+        for p in 1..=max {
+            if req["part"].as_u64().is_none_or(|n| n == p) || req["section"] == "all" {
+                prompt(
+                    s,
+                    p,
+                    req["kind"].as_str(),
+                    req["topic"].as_str().unwrap_or(""),
+                )?;
+                out.push((s.into(), p));
+            }
+        }
+    }
+    if out.is_empty() {
+        return Err(error("部分选择无效"));
+    }
+    Ok(out)
 }

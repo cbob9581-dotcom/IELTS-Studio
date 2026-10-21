@@ -37,6 +37,12 @@ fn readable_html_tables_do_not_require_a_vision_call(){
  assert!(ielts_core::source_library::layout::requires_visual(&json!({"type":"image","text":"","imageAssetId":"small-legend","bbox":[0.1,0.1,0.15,0.15]})));
 }
 #[test]
+fn bounded_batch_selection_skips_successes_and_failed_batches_do_not_discard_siblings(){
+ let mut document=json!({"parseSegments":[{"firstPage":1,"lastPage":10,"state":"complete"},{"firstPage":11,"lastPage":20,"state":"pending"},{"firstPage":21,"lastPage":30,"state":"pending"},{"firstPage":31,"lastPage":40,"state":"pending"}]});
+ assert_eq!(pdf_batch::pending_indices(&document,2).unwrap(),vec![1,2]);
+ pdf_batch::record_failure(&mut document,1,"timeout").unwrap();assert_eq!(document["parseSegments"][0]["state"],"complete");assert_eq!(pdf_batch::pending_indices(&document,2).unwrap(),vec![2,3]);
+}
+#[test]
 #[ignore = "Requires the user-authorized Cambridge 17 PDF; run with IELTS_PDF_FIXTURE"]
 fn actual_scanned_pdf_can_be_split_and_reopened_without_changing_original(){
  let source=std::path::PathBuf::from(std::env::var("IELTS_PDF_FIXTURE").unwrap());

@@ -68,6 +68,7 @@ export type Unit = {
   };
 };
 export type Entry = {
+  evidenceKind?:string;sourceVerified?:boolean;sourceImageId?:string;
   id: string;
   unitId: string;
   kind: SourceRole;

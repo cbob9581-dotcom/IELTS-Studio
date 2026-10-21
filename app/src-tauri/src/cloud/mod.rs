@@ -1,8 +1,12 @@
 pub mod assessment;
 pub mod generation;
+pub mod generation_workflow;
 pub mod ingestion;
 pub mod jobs;
 pub mod repair;
+pub mod request;
+pub mod visuals;
+pub mod review;
 use crate::{
     configuration::ProviderConfig,
     contracts::{DesktopError, Result},
@@ -86,17 +90,15 @@ pub async fn chat_recorded(
     }
     speech::fast_mode(p, &mut body);
     let c = speech::client(p)?;
-    let r = c
+    let send=||async {let r = c
         .post(speech::endpoint(&p.base_url, "chat/completions")?)
         .bearer_auth(key)
         .json(&body)
         .send()
         .await
         .map_err(|_| error("模型请求失败或超时；请检查任务后再决定是否重试，以免重复计费"))?;
-    let bytes = speech::bounded(r, 8 * 1024 * 1024).await?;
-    if let Some(path) = record {
-        std::fs::write(path, &bytes)?;
-    }
+    speech::bounded(r, 8 * 1024 * 1024).await};
+    let bytes=if let Some(path)=record{request::recorded(path,&json!({"endpoint":p.base_url,"request":body}),send).await?}else{send().await?};
     if stream {
         return parse_sse(std::str::from_utf8(&bytes).map_err(|_| error("模型响应编码错误"))?);
     }

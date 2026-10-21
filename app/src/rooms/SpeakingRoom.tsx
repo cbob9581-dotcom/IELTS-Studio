@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as T from "three";
 import {shouldDraw} from "./renderBudget";
-import {loadRuntimeModel} from "./runtimeModel";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import {runtimeSceneCache} from "./sceneCache";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import fixtures from "../../../rooms/speaking/fixture-manifest.json";
 import type { DesktopPort } from "../platform/desktop";
@@ -15,10 +14,10 @@ import {EffectComposer} from "three/addons/postprocessing/EffectComposer.js";
 import {RenderPass} from "three/addons/postprocessing/RenderPass.js";
 import {OutputPass} from "three/addons/postprocessing/OutputPass.js";
 import {createExaminerAnimation} from "./examinerAnimation";
-export function SpeakingRoom({port,flow,topic,notes,onNotes,onPropsReady,onReady,interactive=true,mouthLevel,renderScale=1,assetKey=""}:{
+export function SpeakingRoom({port,flow,topic,notes,onNotes,onPropsReady,onReady,interactive=true,mouthLevel,articulation,renderScale=1,assetKey=""}:{
   port:DesktopPort;flow?:SpeakingState;topic:string;notes:PaperNotes;
   onNotes:(notes:PaperNotes)=>void;onPropsReady:()=>void;onReady:()=>void;
-  interactive?:boolean;mouthLevel:MutableRefObject<number>;renderScale?:number;assetKey?:string;
+  interactive?:boolean;mouthLevel:MutableRefObject<number>;articulation?:MutableRefObject<import("../speaking/articulation").Articulation>;renderScale?:number;assetKey?:string;
 }) {
   const host=useRef<HTMLDivElement>(null);
   const textInput=useRef<HTMLTextAreaElement>(null);
@@ -40,13 +39,7 @@ export function SpeakingRoom({port,flow,topic,notes,onNotes,onPropsReady,onReady
     const scene=new T.Scene();let last=performance.now();
     let action:T.AnimationAction|undefined;let animating=false;
     const cleanup:(()=>void)[]=[];
-    const disposeModel=(root:T.Object3D)=>root.traverse(o=>{
-      if(o instanceof T.Mesh){o.geometry.dispose();
-        for(const m of Array.isArray(o.material)?o.material:[o.material]){
-          for(const v of Object.values(m))if(v instanceof T.Texture){const source=v.source?.data;if(source&&"close" in source&&typeof source.close==="function")source.close();v.dispose();}m.dispose();
-        }
-      }
-    });
+    let releaseScene:(()=>void)|undefined;
     (async () => {
       try {
         renderer = new T.WebGLRenderer({
@@ -60,14 +53,10 @@ export function SpeakingRoom({port,flow,topic,notes,onNotes,onPropsReady,onReady
         renderer.toneMappingExposure = 1;
         scene.background = new T.Color(0xe4e6df);
         el.appendChild(renderer.domElement);
-        const bytes = await loadRuntimeModel(port,assetKey);
-        if (cancel) return;
         setStatus("正在准备材质与骨骼…");
-        const gltf = await new GLTFLoader().parseAsync(bytes.slice(0), "");
-        if (cancel) {
-          disposeModel(gltf.scene);
-          return;
-        }
+        const gltf = await runtimeSceneCache(port).acquire(assetKey);
+        if (cancel) {gltf.release();return;}
+        releaseScene=gltf.release;
         model = gltf.scene;
         scene.add(model);
         model.updateMatrixWorld(true);
@@ -245,7 +234,7 @@ export function SpeakingRoom({port,flow,topic,notes,onNotes,onPropsReady,onReady
             if(action&&action.time>=12&&!readySent){readySent=true;current.onPropsReady();}
             if(action&&action.time>=13.95){animating=false;action.paused=true;}
           }
-          examiner.update(delta,{stage:current.flow?.stage??"greeting",mouth:mouthLevel.current,handoff:animating||wantsHandoff});
+          examiner.update(delta,{stage:current.flow?.stage??"greeting",mouth:mouthLevel.current,articulation:articulation?.current,handoff:animating||wantsHandoff});
           const content=(wantsHandoff||handed)?current.topic:"";
           if(content!==oldTopic||!oldNotes){cardInk.draw(content,null);oldTopic=content;}
           if(oldNotes!==current.notes){noteInk.draw("",current.notes);oldNotes=current.notes;}
@@ -263,6 +252,9 @@ export function SpeakingRoom({port,flow,topic,notes,onNotes,onPropsReady,onReady
           composer!.render(delta);
           frame = requestAnimationFrame(render);
         };
+        setStatus("正在预热场景着色器…");
+        await renderer.compileAsync(scene,camera);
+        if(cancel)return;
         frame = requestAnimationFrame(render);
         setStatus("按住右键环顾 · 话题卡递到后点击阅读 · 点击草稿纸输入或拖动书写 · Esc 抬头/菜单");
         live.current.onReady();
@@ -282,10 +274,11 @@ export function SpeakingRoom({port,flow,topic,notes,onNotes,onPropsReady,onReady
       mixer?.stopAllAction();
       if (model) {
         mixer?.uncacheRoot(model);
-        disposeModel(model);
+        releaseScene?.();
       }
       renderer?.dispose();
       composer?.passes.forEach(pass=>pass.dispose());composer?.dispose();
+      renderer?.forceContextLoss();
       renderer?.domElement.remove();
     };
   }, [port, renderScale,assetKey,reload]);

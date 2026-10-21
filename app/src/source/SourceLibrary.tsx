@@ -1,3 +1,4 @@
+import {sourceHealth} from "./health";
 import {ListeningAudioPanel} from "./ListeningAudioPanel";
 import { useEffect, useState, useSyncExternalStore, useRef } from "react";
 import type { DesktopPort } from "../platform/desktop";
@@ -17,7 +18,7 @@ const stateNames: Record<string, string> = {
   media: "待绑定音频",
   failed: "需处理",
 };
-export function SourceLibrary({ port }: { port: DesktopPort | null }) {
+export function SourceLibrary({ port,initialProjectId }: { port: DesktopPort | null;initialProjectId?:string }) {
   const [items, setItems] = useState<{ id: string; title: string }[]>([]),
     [project, setProject] = useState<SourceProject | null>(null),
     [title, setTitle] = useState("");
@@ -54,6 +55,7 @@ export function SourceLibrary({ port }: { port: DesktopPort | null }) {
         .then(setItems)
         .catch((e) => setError(errorText(e)));
   }, [port]);
+  useEffect(()=>{if(initialProjectId&&port?.sourceAction){let active=true;port.sourceAction("read",{id:initialProjectId}).then(p=>{if(active){setProject(p);setDocId(p.documents[0]?.id??"");}}).catch(e=>{if(active)setError(errorText(e));});return()=>{active=false;};}},[port,initialProjectId]);
   useEffect(() => {
     if (progress?.project && (!project || project.id === progress.project.id)) {
       setProject(progress.project);
@@ -139,7 +141,7 @@ export function SourceLibrary({ port }: { port: DesktopPort | null }) {
     project?.units.flatMap((u) => u.result?.section?.questions ?? []) ?? [];
   const pendingEntries =
     project?.entries.filter((e) =>
-      ["unassigned", "conflict"].includes(e.state),
+      ["unassigned", "conflict", "source_review"].includes(e.state),
     ) ?? [];
   function locate(entry: Entry) {
     pendingLocate.current = entry.anchor.blockIds;
@@ -202,6 +204,7 @@ export function SourceLibrary({ port }: { port: DesktopPort | null }) {
       {project && (
         <>
           <h2>{project.title}</h2>
+          <section className="settings-card"><h3>按 Test 查看处理结果</h3><p className="muted">已提取的部分持续保留。先核对下方版面预览中的范围，再按 Test 一次确认并处理；有缺失的部分单独补齐。</p>{sourceHealth(project).map(h=><article className="settings-card" key={h.test}><h4>{h.test} · 已提取 {h.questions} 个题目对象</h4><p>{h.pending} 个单元待处理，{h.failures.length} 个单元需处理，{h.missingAnswers.length} 题缺有来源的答案。</p>{!!h.missingAnswers.length&&<details><summary>查看缺失答案</summary><p>{h.missingAnswers.join('、')}</p></details>}{h.failures.map(f=><p key={f.id} className="error">{f.title}：{f.error}</p>)}<button disabled={busy} onClick={()=>perform(async()=>{const p=await action('confirm_test',{test:h.test});const rank:Record<string,number>={questions:0,answers:1,explanations:2,essays:3,transcript:4};const targets=p.units.filter((u:Unit)=>u.test===h.test&&u.state!=='complete').sort((a:Unit,b:Unit)=>(rank[a.role]??9)-(rank[b.role]??9)||a.part-b.part).map((u:Unit)=>u.id);if(targets.length)await runner?.run(p,targets);})}>确认 {h.test} 范围并批量处理（可能计费）</button></article>)}</section>
           <section className="settings-card">
             <h3>补充题册 / 答案 / 解析 / 音频</h3>
             <p>资料用途可多选。同一文件再次加入会合并用途，原件按内容去重。</p>
@@ -769,7 +772,7 @@ function EntryReview({
         {roleNames[e.kind]} ·{" "}
         {e.state === "conflict" ? "答案冲突" : "尚未确定对应题目"}
       </h4>
-      <pre className="source-text">{e.text || e.quote}</pre>
+      {e.evidenceKind==='visual_transcription'&&e.sourceVerified!==true&&<p className="notice">此条来自原页图片转录，请先点击定位核对原图，再确认匹配。尚未作为判分答案。</p>}<pre className="source-text">{e.text || e.quote}</pre>
       <p>
         {e.test} · {sectionNames[e.section]} · 题号 {e.numbers.join(", ")} ·
         来源第 {e.anchor?.page ?? "?"} 页

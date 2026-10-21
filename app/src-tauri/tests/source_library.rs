@@ -1,5 +1,10 @@
 use ielts_core::source_library::{self as lib, layout, matching};
 use serde_json::json;
+#[test]
+fn a_choose_two_answer_attaches_to_one_question_covering_two_score_positions(){
+ let mut p=json!({"units":[{"test":"Test 1","section":"reading","role":"questions","result":{"section":{"questions":[{"id":"q23","number":23,"part":2,"points":2,"kind":"multiple_choice","options":["A. one","B. two","C. three","D. four"]}]}}}],"entries":[{"id":"key","kind":"answers","test":"Test 1","section":"reading","numbers":[23,24],"answer":{"accepted":[["B","D"]],"caseSensitive":false},"quote":"23 and 24 B D"}]});matching::reconcile(&mut p).unwrap();let q=&p["units"][0]["result"]["section"]["questions"][0];assert_eq!(q["answer"]["accepted"],json!([["B. two","D. four"]]));assert_eq!(p["entries"][0]["state"],"matched");
+ p["entries"][0]["numbers"]=json!([23]);matching::reconcile(&mut p).unwrap();assert!(p["units"][0]["result"]["section"]["questions"][0].get("answer").is_none());
+}
 
 #[test]
 fn project_revision_and_duplicate_documents() {

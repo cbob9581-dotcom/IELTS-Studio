@@ -1,3 +1,4 @@
+import {analyzeArticulation} from "./articulation";
 import type { AppConfig } from "../configuration/types";
 import type { MutableRefObject } from "react";
 export function encodeWave(chunks:Float32Array[],rate:number):ArrayBuffer {
@@ -83,7 +84,7 @@ export class Microphone {
   }
   async dispose(){this.stop();this.node.port.onmessage=null;this.node.disconnect();this.source.disconnect();this.sink.disconnect();this.stream.getTracks().forEach(t=>t.stop());await this.context.close();}
 }
-export async function playSpeech(bytes:ArrayBuffer,config:AppConfig,signal:AbortSignal,level:MutableRefObject<number>):Promise<void>{
+export async function playSpeech(bytes:ArrayBuffer,config:AppConfig,signal:AbortSignal,level:MutableRefObject<number>,articulation?:MutableRefObject<import('./articulation').Articulation>):Promise<void>{
   signal.throwIfAborted();const url=URL.createObjectURL(new Blob([bytes],{type:"audio/wav"}));
   const audio=new Audio(url);audio.volume=config.audio.masterVolume*config.audio.ttsVolume;
   let context:AudioContext|undefined,pcm:Float32Array|undefined,rate=24000;
@@ -105,8 +106,9 @@ export async function playSpeech(bytes:ArrayBuffer,config:AppConfig,signal:Abort
         const at=Math.floor(audio.currentTime*rate);let sum=0;
         for(let i=at;i<Math.min(at+800,pcm!.length);i++)sum+=pcm![i]*pcm![i];
         level.current=Math.min(1,Math.sqrt(sum/800)*6);
+        if(articulation)articulation.current=analyzeArticulation(pcm!,rate,at);
       },33);
       audio.play().catch(()=>{cleanup();reject(Error("考官语音播放被阻止，请点击重试并检查输出设备"));});
     });
-  }finally{clearInterval(ticker);level.current=0;audio.pause();audio.src="";URL.revokeObjectURL(url);await context?.close();}
+  }finally{clearInterval(ticker);level.current=0;if(articulation)articulation.current={energy:0,rounding:0,width:0};audio.pause();audio.src="";URL.revokeObjectURL(url);await context?.close();}
 }
