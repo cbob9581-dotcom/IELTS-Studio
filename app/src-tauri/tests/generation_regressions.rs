@@ -1,6 +1,27 @@
 use ielts_core::cloud::generation;
 use serde_json::{json,Value};
 #[test]
+fn output_skeleton_uses_the_same_source_id_and_statement_rules_as_the_instructions(){
+ let p=generation::prompt("reading",1,Some("true_false_not_given"),"").unwrap();assert!(p.contains("\"evidenceSourceIds\":[\"p1\"]"));assert!(!p.contains("Exact continuous source quotation"));assert!(p.contains("specific complete statement"));
+}
+#[test]
+fn complete_reading_uses_the_whole_test_word_range_without_imposing_it_on_one_training_part(){
+ let lengths=[472,697,694];let source:Vec<_>=lengths.iter().enumerate().map(|(i,n)|json!({"section":"reading","part":i+1,"material":{"paragraphs":[{"text":"word ".repeat(*n)}]}})).collect();
+ let verdict=json!({"pass":true,"issues":[]});let v=generation::scope_verdict(&verdict,&json!(source));assert_eq!(v["pass"],false);let issue=&v["issues"][0];assert_eq!(issue["questionId"],"reading-1-1");assert_eq!(issue["sourceWordRange"]["min"],759);assert_eq!(issue["materialChangeRequired"],true);
+ assert!(generation::validate_material_scope(&json!({"paragraphs":[{"text":"word ".repeat(700)}]}),"reading",1,&v).is_err());
+ generation::validate_material_scope(&json!({"paragraphs":[{"text":"word ".repeat(850)}]}),"reading",1,&v).unwrap();
+ assert_eq!(generation::scope_verdict(&verdict,&json!([source[0]])),verdict);
+ let good:Vec<_>=(1..=3).map(|part|json!({"section":"reading","part":part,"material":{"paragraphs":[{"text":"word ".repeat(800)}]}})).collect();assert_eq!(generation::scope_verdict(&verdict,&json!(good)),verdict);assert_eq!(generation::scope_verdict(&v,&json!(good)),verdict);assert_eq!(generation::scope_verdict(&v,&json!(source)),v);
+}
+#[test]
+fn a_monologue_source_is_not_rejected_by_the_tts_clip_size_and_keeps_original_evidence(){
+ let text="The park contains oak and pine trees. ".repeat(40);
+ let qs:Vec<_>=(1..=10).map(|n|json!({"id":format!("q{n}"),"number":n,"part":2,"kind":"gap_fill","prompt":"Write ONE WORD: ____ trees","points":1,"evidenceSourceIds":["t2"],"answer":{"accepted":["oak"],"caseSensitive":false,"maxWords":1}})).collect();
+ let mut v=json!({"paragraphs":[],"questions":qs,"transcript":[{"id":"t1","speaker":2,"text":"Read questions 11 to 20."},{"id":"t2","speaker":0,"text":text}]});
+ let source=v["transcript"].clone();generation::normalize_generated(&mut v,"listening",2).unwrap();
+ generation::validate_part(&v,"listening",2,None).unwrap();assert_eq!(v["transcript"],source);assert_eq!(v["questions"][0]["evidence"][0],text);
+}
+#[test]
 fn legacy_original_response_uses_unique_real_source_and_compiles_one_word_only_instructions(){
  let mut v=json!({"paragraphs":[],"transcript":[{"id":"t1","speaker":0,"text":"Megan Taylor. I can attend at six pm."}],"questions":[{"id":"q1","kind":"gap_fill","prompt":"Write ONE WORD ONLY. First name: ____","answer":{"accepted":["Megan"],"maxWords":1},"evidence":["My name is Megan Taylor."]},{"id":"q2","kind":"gap_fill","prompt":"Write ONE WORD AND/OR A NUMBER. Time: ____","answer":{"accepted":["six pm"],"maxWords":1},"evidence":["I can attend at six pm."]}]});
  let original=v["transcript"].clone();generation::normalize_generated(&mut v,"listening",1).unwrap();assert_eq!(v["transcript"],original);assert_eq!(v["questions"][0]["evidence"],json!(["Megan Taylor. I can attend at six pm."]));assert_eq!(v["questions"][1]["answer"]["maxWords"],2);assert!(v["questions"][1]["prompt"].as_str().unwrap().contains("NO MORE THAN TWO WORDS"));

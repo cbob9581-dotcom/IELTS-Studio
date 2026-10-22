@@ -35,6 +35,7 @@ docs/**
 !docs/出题与导入修复-0.5.3.md
 !docs/系统优化与配置-0.6.0.md
 !docs/使用流程修复-0.6.1.md
+!docs/出题协议与实测-0.6.2.md
 
 # One-off local review helpers point to personal test folders and screenshots
 tools/start-*-verification.ps1

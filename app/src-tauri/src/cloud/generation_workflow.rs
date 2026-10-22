@@ -3,13 +3,29 @@ use serde_json::{json,Value};
 use std::{fs,path::Path};
 pub trait Providers {fn provider(&self,id:&str)->Result<(ProviderConfig,String)>;}
 
+// Audio rendering units are independent of immutable source/evidence turns.
+pub fn audio_turns(material:&Value)->Result<Vec<Value>>{
+ let mut out=Vec::new();
+ for turn in material["transcript"].as_array().ok_or_else(||error("听力缺少脚本"))?{
+  let text=turn["text"].as_str().ok_or_else(||error("听力发言缺少正文"))?;
+  for chunk in crate::source_library::transcripts::chunks(text,500){let mut clip=turn.clone();clip["text"]=json!(chunk);out.push(clip);}
+ }Ok(out)
+}
+pub fn reuse_failed_review_for_repair(root:&Path,j:&mut Value)->Result<bool>{
+ if j["kind"]!="generation"||j["humanEditedAt"].is_number()||j["validationProtocol"]!="demonstrated-v2"||j["validation"]["pass"]!=false||j["validation"]["issues"].as_array().is_none_or(|a|a.is_empty())||j["validationHash"]!=papers::hash(&serde_json::to_vec(&j["paper"])?){return Ok(false);}
+ let dir=jobs::dir(root,j["id"].as_str().ok_or_else(||error("缺少任务编号"))?)?;let plan=generation::stages(&j["request"])?;let source=materials(&dir,&plan)?;
+ if j["textFingerprint"]!=papers::hash(&serde_json::to_vec(&source)?){return Ok(false);}
+ let mut verdict=generation::scope_verdict(&j["validation"],&source);let targets=cloud::review::targets(&verdict,&plan)?;verdict["requestRound"]=j["textRepairRound"].clone();atomic_json(&dir.join("content-repair-base.json"),&source)?;
+ j["contentRepair"]=json!({"active":true,"next":0,"targets":targets,"verdict":verdict});j["contentRepairCount"]=json!(1);j["validation"]=Value::Null;j["audioAuthorization"]=Value::Null;Ok(true)
+}
+
 pub async fn step(services: &impl Providers, root: &Path, j: &mut Value) -> Result<()> {
     let plan = generation::stages(&j["request"])?;
     let stage = j["stage"].as_u64().unwrap_or(0) as usize;
     let dir = jobs::dir(root, j["id"].as_str().unwrap())?;
     if j["recheckOnly"]==true{
         papers::validate(&j["paper"])?;jobs::operation(root,j,"review","重新校审当前草稿（由后台任务管理，计入请求预算）",0,1,"份")?;
-        let (p,key)=services.provider("deepseek")?;let context=json!({"paper":j["paper"],"sourceMaterials":materials(&dir,&plan)?,"requestedScope":j["request"],"repairRound":j["textRepairRound"]});let verdict=cloud::review::audit(&p,&key,&dir,&context).await?;
+        let (p,key)=services.provider("deepseek")?;let context=json!({"paper":j["paper"],"sourceMaterials":materials(&dir,&plan)?,"requestedScope":j["request"],"repairRound":j["textRepairRound"]});let verdict=generation::scope_verdict(&cloud::review::audit(&p,&key,&dir,&context).await?,&context["sourceMaterials"]);
         j["validationHash"]=json!(papers::hash(&serde_json::to_vec(&j["paper"])?));j["validationProtocol"]=json!("demonstrated-v2");j["validationModel"]=json!(p.model);j["validationAt"]=json!(now_ms());j["validation"]=verdict;j["recheckOnly"]=json!(false);j["state"]=json!("review_required");return Ok(());
     }
     if stage < plan.len() {
@@ -95,7 +111,8 @@ pub async fn step(services: &impl Providers, root: &Path, j: &mut Value) -> Resu
             let original=&base[index]["material"];
             jobs::operation(root,j,"content_fix",&format!("根据校审问题修复 {sec} Part {part}（仅文字，不调用 TTS）"),next,targets.len(),"部分")?;
             let (p,key)=services.provider("deepseek")?;
-            let fixed=cloud::review::correct(&p,&key,&dir,sec,*part,j["request"]["kind"].as_str(),original,&j["contentRepair"]["verdict"],&j["request"]).await?;
+            let verdict=generation::scope_verdict(&j["contentRepair"]["verdict"],&materials(&dir,&plan)?);
+            let fixed=cloud::review::correct(&p,&key,&dir,sec,*part,j["request"]["kind"].as_str(),original,&verdict,&j["request"]).await?;
             let file=dir.join(format!("part-{index}.json"));let backup=dir.join(format!("part-{index}-before-content-fix.json"));if !backup.exists(){fs::copy(&file,&backup)?;}
             if sec=="listening"&&original["transcript"]!=fixed["transcript"]{if let Some(assets)=j["assets"].as_array_mut(){assets.retain(|a|!a["id"].as_str().unwrap_or("").starts_with(&format!("listening-{part}-")));}j["audioAuthorization"]=Value::Null;}
             atomic_json(&file,&fixed)?;j["contentRepair"]["next"]=json!(next+1);j["validation"]=Value::Null;return Ok(());
@@ -164,6 +181,8 @@ pub async fn step(services: &impl Providers, root: &Path, j: &mut Value) -> Resu
         j["validationProtocol"]=json!("demonstrated-v2");j["validation"]=verdict;j["validationModel"]=json!(p.model);j["textFingerprint"]=json!(fingerprint);
         j["paper"]=assembled.clone();j["validationHash"]=json!(papers::hash(&serde_json::to_vec(&j["paper"])?));
     }
+    // Apply hard scope rules even when the semantic audit was restored from cache.
+    j["validation"]=generation::scope_verdict(&j["validation"],&material);
     if j["validation"]["pass"]!=true {
         let limit=crate::task_policy::TaskPolicy::load(root)?.max_content_fix_rounds as u64;
         if j["contentRepairCount"].as_u64().unwrap_or(0)<limit {
@@ -176,8 +195,11 @@ pub async fn step(services: &impl Providers, root: &Path, j: &mut Value) -> Resu
         j["state"]=json!("review_required");j["error"]=json!(format!("已完成 {limit} 轮限定的文字修复并复查，仍有下列具体问题。成功部分和草稿已保存，TTS 未启动。"));
         jobs::operation(root,j,"review_blocked","文字草稿需修复；语音合成尚未启动",0,1,"份")?;return Ok(());
     }
-    let expected:usize=plan.iter().enumerate().filter(|(_, (s,_))|s=="listening").map(|(i,_)|material[i]["material"]["transcript"].as_array().map_or(0,Vec::len)).sum();
-    let completed:usize=plan.iter().enumerate().filter(|(_, (s,_))|s=="listening").map(|(i,(_,part))|material[i]["material"]["transcript"].as_array().into_iter().flatten().enumerate().filter(|(ti,_)|j["assets"].as_array().is_some_and(|a|a.iter().any(|a|a["id"]==format!("listening-{part}-{ti}")))).count()).sum();
+    let mut expected=0;let mut completed=0;
+    for (i,(_,part)) in plan.iter().enumerate().filter(|(_, (s,_))|s=="listening"){
+        let turns=audio_turns(&material[i]["material"])?;expected+=turns.len();
+        completed+=turns.iter().enumerate().filter(|(ti,_)|j["assets"].as_array().is_some_and(|a|a.iter().any(|a|a["id"]==format!("listening-{part}-{ti}")))).count();
+    }
     j["audioPending"]=json!(completed<expected);j["audioSegmentCount"]=json!(expected);j["audioCompleted"]=json!(completed);
     if completed<expected&&jobs::check_audio_authorization(j,&fingerprint).is_err(){
         j["state"]=json!("review_required");
@@ -203,7 +225,7 @@ pub async fn step(services: &impl Providers, root: &Path, j: &mut Value) -> Resu
                     "听力需要独立对话与旁白音色，配置格式：音色A|音色B|旁白",
                 ));
             }
-            let transcript = v["transcript"].as_array().unwrap();
+            let transcript = audio_turns(v)?;
             let mut pending = Vec::new();
             let mut completed = 0;
             for (ti, t) in transcript.iter().enumerate() {
@@ -329,7 +351,7 @@ fn assemble(j: &Value, dir: &Path, plan: &[(String, u64)]) -> Result<Value> {
                 }
             }
             if sec == "listening" {
-                for ti in 0..v["transcript"].as_array().unwrap().len() {
+                for ti in 0..audio_turns(&v)?.len() {
                     let id = format!("listening-{p}-{ti}");
                     if j["assets"].as_array().is_some_and(|a|a.iter().any(|a|a["id"]==id)) {audio_parts.insert(id.clone(), json!(p));audios.push(id);}
                 }
@@ -379,6 +401,25 @@ fn add_asset(
 #[cfg(test)]
 mod tests {
  use super::*;
+ #[test]
+ fn explicit_fix_reuses_only_a_failed_verdict_bound_to_the_current_paper_and_sources(){
+  let root=tempfile::tempdir().unwrap();let mut j=jobs::create(root.path(),"generation",json!({"section":"listening","part":2})).unwrap();let dir=jobs::dir(root.path(),j["id"].as_str().unwrap()).unwrap();atomic_json(&dir.join("part-0.json"),&json!({"paragraphs":[],"questions":[],"transcript":[]})).unwrap();let plan=generation::stages(&j["request"]).unwrap();j["paper"]=json!({"title":"unchanged"});j["validation"]=json!({"pass":false,"issues":[{"questionId":"listening-2-1","reason":"repair shared options"}]});j["validationProtocol"]=json!("demonstrated-v2");j["validationHash"]=json!(papers::hash(&serde_json::to_vec(&j["paper"]).unwrap()));j["textFingerprint"]=json!(papers::hash(&serde_json::to_vec(&materials(&dir,&plan).unwrap()).unwrap()));
+  let mut changed=j.clone();changed["paper"]["title"]=json!("changed after audit");assert!(!reuse_failed_review_for_repair(root.path(),&mut changed).unwrap());assert!(reuse_failed_review_for_repair(root.path(),&mut j).unwrap());assert_eq!(j["contentRepair"]["targets"],json!([0]));assert_eq!(j["contentRepairCount"],1);assert!(j["validation"].is_null());
+ }
+ #[tokio::test]
+ async fn cached_full_reading_pass_cannot_bypass_machine_word_range_or_issue_new_requests(){
+  let root=tempfile::tempdir().unwrap();let mut j=jobs::create(root.path(),"generation",json!({"section":"reading"})).unwrap();let dir=jobs::dir(root.path(),j["id"].as_str().unwrap()).unwrap();
+  for part in 1..=3{let qs:Vec<_>=(1..=generation::count("reading",part)).map(|n|json!({"id":format!("q{n}"),"number":n,"part":part,"kind":"gap_fill","points":1,"prompt":"Write ONE WORD: ____ trees","answer":{"accepted":["oak"],"caseSensitive":false,"maxWords":1},"evidence":["oak and pine"]})).collect();atomic_json(&dir.join(format!("part-{}.json",part-1)),&json!({"paragraphs":[{"id":"p1","part":part,"text":"oak and pine ".repeat(200)}],"questions":qs,"transcript":[]})).unwrap();}
+  let plan=generation::stages(&j["request"]).unwrap();j["stage"]=json!(3);j["validationProtocol"]=json!("demonstrated-v2");j["paper"]=assemble(&j,&dir,&plan).unwrap();j["validation"]=json!({"pass":true,"issues":[]});j["textFingerprint"]=json!(papers::hash(&serde_json::to_vec(&materials(&dir,&plan).unwrap()).unwrap()));j["validationHash"]=json!(papers::hash(&serde_json::to_vec(&j["paper"]).unwrap()));j["contentRepairCount"]=json!(2);
+  step(&NoProviders,root.path(),&mut j).await.unwrap();assert_eq!(j["validation"]["pass"],false);assert_eq!(j["operation"]["phase"],"review_blocked");assert!(!jobs::content_approved(&j));
+ }
+ #[test]
+ fn audio_clip_boundaries_preserve_source_evidence_and_speaker_order(){
+  let text="The original lecture contains a long sentence about oak trees. ".repeat(35);
+  let material=json!({"transcript":[{"id":"t1","speaker":2,"text":"Read the questions."},{"id":"t2","speaker":0,"text":text},{"id":"t3","speaker":2,"text":"Check your answers."}]});
+  let before=material.clone();let clips=audio_turns(&material).unwrap();assert_eq!(material,before);assert!(clips.len()>3);assert!(clips.iter().all(|c|c["text"].as_str().unwrap().chars().count()<=500));assert_eq!(clips[0]["speaker"],2);assert_eq!(clips.last().unwrap()["speaker"],2);
+  let spoken=clips.iter().filter(|c|c["speaker"]==0).map(|c|c["text"].as_str().unwrap()).collect::<Vec<_>>().join(" ");assert_eq!(spoken.split_whitespace().collect::<Vec<_>>(),text.split_whitespace().collect::<Vec<_>>());
+ }
  struct NoProviders;
  impl Providers for NoProviders {fn provider(&self,id:&str)->Result<(ProviderConfig,String)>{panic!("no provider should be accessed before explicit audio action: {id}")}}
  #[tokio::test]

@@ -1,6 +1,11 @@
 use ielts_core::cloud::publication;
 use serde_json::json;
 #[test]
+fn a_cached_ai_pass_on_an_undersized_complete_reading_cannot_publish_or_authorize_tts(){
+ let mut j=json!({"kind":"generation","state":"review_required","paper":{"sections":[{"section":"reading","paragraphs":[{"part":1,"text":"word ".repeat(600)},{"part":2,"text":"word ".repeat(600)},{"part":3,"text":"word ".repeat(600)}]}]},"validation":{"pass":true,"issues":[]},"audioPending":false});
+ j["validationHash"]=json!(ielts_core::papers::hash(&serde_json::to_vec(&j["paper"]).unwrap()));assert!(!publication::ready(&j));assert!(ielts_core::cloud::jobs::authorize_audio(&mut j).is_err());
+}
+#[test]
 fn uploaded_audio_must_decode_before_it_can_make_a_paper_ready(){
  assert!(publication::validate_audio_upload(b"not audio","mp3").is_err());assert!(publication::validate_audio_upload(&[],"wav").is_err());
  let wav=ielts_core::source_library::audio_assets::wav(&vec![0.1;24000],24000);assert!(publication::validate_audio_upload(&wav,"wav").unwrap()>0);

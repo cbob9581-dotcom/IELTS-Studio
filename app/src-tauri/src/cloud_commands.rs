@@ -551,7 +551,9 @@ pub fn cloud_fix_text(id:String,state:State<AppState>)->Result<Value>{
  let _lease=Lease::acquire(&id)?;let (root,_)=roots(&state)?;let mut j=jobs::load(&root,&id)?;
  if j["kind"]!="generation"||!["review_required","failed","paused"].contains(&j["state"].as_str().unwrap_or(""))||!j["paper"].is_object()||j["stage"].as_u64().unwrap_or(0)<stages(&j["request"])?.len() as u64{return Err(error("请先打开已完成题目文字的待处理草稿；失败的单部分请使用重新整理当前部分"));}
  if j["humanEditedAt"].is_number(){return Err(error("此稿含人工修改，请先使用重新校审，避免自动重组覆盖你的修改"));}
- j["recheckOnly"]=json!(false);j["validation"]=Value::Null;j["textFingerprint"]=Value::Null;j["contentRepair"]=Value::Null;j["contentRepairCount"]=json!(0);j["audioAuthorization"]=Value::Null;j["textRepairRound"]=json!(uuid::Uuid::new_v4().to_string());j["state"]=json!("pending");j["error"]=Value::Null;
+ j["recheckOnly"]=json!(false);j["contentRepairCount"]=json!(0);j["audioAuthorization"]=Value::Null;j["textRepairRound"]=json!(uuid::Uuid::new_v4().to_string());
+ if !cloud::generation_workflow::reuse_failed_review_for_repair(&root,&mut j)?{j["validation"]=Value::Null;j["textFingerprint"]=Value::Null;j["contentRepair"]=Value::Null;}
+ j["state"]=json!("pending");j["error"]=Value::Null;
  jobs::save(&root,&j)?;Ok(j)
 }
 #[tauri::command]

@@ -143,7 +143,8 @@ pub fn review_edit(j: &mut Value, paper: Value) {
 }
 
 pub fn content_approved(j: &Value) -> bool {
-    j["validation"]["pass"] == true
+    (j["kind"]!="generation"||super::generation::paper_scope_valid(&j["paper"]))
+        && j["validation"]["pass"] == true
         && j["validation"]["issues"]
             .as_array()
             .is_some_and(|x| x.is_empty())

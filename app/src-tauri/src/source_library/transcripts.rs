@@ -52,7 +52,7 @@ pub fn parse(text:&str,origin:&str,test:&str,part:u64)->Result<Value>{
  if turns.is_empty(){return Err(err("清理标题和题号标注后没有可朗读正文，请核对原文"));}
  Ok(json!({"id":id(),"revision":0,"origin":origin,"test":test.trim(),"part":part,"rawText":text,"turns":turns,"events":events,"voices":{},"sourceRefs":[],"state":"draft"}))
 }
-fn chunks(text:&str,max:usize)->Vec<String>{
+pub(crate) fn chunks(text:&str,max:usize)->Vec<String>{
  let mut out=vec![];let mut rest=text.trim();
  while rest.chars().count()>max {
   let limit=rest.char_indices().nth(max).map(|(i,_)|i).unwrap_or(rest.len());

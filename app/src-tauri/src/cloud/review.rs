@@ -76,7 +76,7 @@ pub fn adjudication_verdict(proposed:&Value,checked:&Value)->Result<Value>{
  Some("withdraw")=>advisories.push(json!({"questionId":row["questionId"],"reason":row["reason"]})),
  Some("keep_blocker")=>{let mut item=original.iter().find(|i|i["questionId"]==row["questionId"]).unwrap().clone();for field in ["reason","fix","proof","materialChangeRequired"]{item[field]=row[field].clone();}issues.push(item);},
  _=>return Err(error("复核须明确保留阻断或撤回，不接受含糊状态"))}}
- if seen.len()!=ids.len(){return Err(error("复核遗漏原问题，未采纳"));}
+ if seen.len()!=ids.len(){return Err(error(format!("复核遗漏原问题 {}；必须对每个 requiredQuestionId 返回一条明确 decisions（keep_blocker 或 withdraw），不能省略已撤回的问题。",json!(ids.difference(&seen).cloned().collect::<Vec<_>>()))));}
  let out=json!({"pass":issues.is_empty(),"issues":issues,"advisories":advisories,"resolutions":checked["resolutions"].as_array().cloned().unwrap_or_default()});validate_adjudication(proposed,&out)?;Ok(out)
 }
 pub fn validate_adjudication(proposed: &Value, checked: &Value) -> Result<()> {
@@ -218,10 +218,11 @@ pub fn answer_disagreements(paper: &Value, solved: &Value) -> Result<Vec<Value>>
         .as_array()
         .ok_or_else(|| error("独立解题未返回答案列表"))?;
     if answers.len() != questions.len() {
+        let required:Vec<_>=questions.iter().map(|q|q["id"].clone()).collect();let received:Vec<_>=answers.iter().map(|a|a["questionId"].clone()).collect();
         return Err(error(format!(
-            "独立解题答案不完整：需要 {} 条，实际 {} 条；原稿已保存",
+            "独立解题答案不完整：需要 {} 条，实际 {} 条；仅回答客观题，每个对象一条。缺少 {}；多余 {}；完整必答 ID 为 {}；原稿已保存",
             questions.len(),
-            answers.len()
+            answers.len(),json!(required.iter().filter(|id|!received.contains(id)).collect::<Vec<_>>()),json!(received.iter().filter(|id|!required.contains(id)).collect::<Vec<_>>()),json!(required)
         )));
     }
     let mut out = vec![];
@@ -231,7 +232,7 @@ pub fn answer_disagreements(paper: &Value, solved: &Value) -> Result<Vec<Value>>
             .filter(|a| a["questionId"] == q["id"])
             .collect();
         if rows.len() != 1 || rows[0].get("answer").is_none() {
-            return Err(error("独立解题题号缺失或重复，未采纳结果"));
+            return Err(error(format!("独立解题题号 {} 缺失、重复或没有 answer 字段：需要恰好一条，实际 {} 条；请返回该原始组卷 ID，不得使用原稿别名",q["id"],rows.len())));
         }
         let sensitive = q["answer"]["caseSensitive"] == true;
         let mut actual=rows[0]["answer"].clone();
@@ -287,6 +288,8 @@ pub async fn audit(p: &ProviderConfig, key: &str, dir: &Path, context: &Value) -
             .await
         })
         .await?;
+        let checkpoint=dir.join(format!("blind-{}.checked.json",crate::papers::hash(identity.to_string().as_bytes())));
+        let solved=super::repair::checked(p,key,system,json!(serde_json::to_string(&blind)?),false,&checkpoint,solved,|s|answer_disagreements(&context["paper"],s).map(|_|())).await?;
         let disagreements = answer_disagreements(&context["paper"], &solved)?;
         context["independentAnswers"] = solved;
         context["answerDisagreements"] = json!(disagreements);
@@ -308,7 +311,12 @@ pub async fn audit(p: &ProviderConfig, key: &str, dir: &Path, context: &Value) -
         .await
     })
     .await?;
-    validate_verdict(&v)?;
+    let checkpoint=dir.join(format!("audit-{}.checked.json",crate::papers::hash(identity.to_string().as_bytes())));
+    v=super::repair::checked(p,key,system,json!(serde_json::to_string(&context)?),false,&checkpoint,v,|v|{
+        validate_verdict(v)?;
+        for issue in v["issues"].as_array().unwrap(){if !context["paper"]["sections"].as_array().into_iter().flatten().flat_map(|s|s["questions"].as_array().into_iter().flatten()).any(|q|q["id"]==issue["questionId"]){return Err(error(format!("校审问题 questionId={} 不在本卷原题号中；必须使用提供的组卷 ID，不得发明题号",issue["questionId"])));}}
+        Ok(())
+    }).await?;
     if v["pass"] == true {
         let unresolved:Vec<_>=context["answerDisagreements"].as_array().into_iter().flatten().filter(|d|!v["resolutions"].as_array().into_iter().flatten().any(|r|r["questionId"]==d["questionId"]&&r["reason"].as_str().is_some_and(|s|s.trim().chars().count()>=5))).map(|d|json!({"section":d["questionId"].as_str().unwrap_or("").split('-').next(),"questionId":d["questionId"],"reason":"独立解题与标准答案存在未解释的分歧","fix":format!("依据实际材料确认答案唯一性，解释或修正这项分歧：{d}")})).collect();
         if !unresolved.is_empty() {
@@ -318,7 +326,9 @@ pub async fn audit(p: &ProviderConfig, key: &str, dir: &Path, context: &Value) -
     }
     if v["pass"] != true {
         let system = include_str!("prompts/adjudicate.md");
-        let data = json!({"context":context,"proposed":v});
+        let required:std::collections::BTreeSet<_>=v["issues"].as_array().into_iter().flatten().filter_map(|i|i["questionId"].as_str()).collect();
+        let coverage:Vec<_>=context["paper"]["sections"].as_array().into_iter().flatten().flat_map(|s|s["questions"].as_array().into_iter().flatten()).filter(|q|q["answer"].is_object()).map(|q|{let n=q["number"].as_u64().unwrap_or(0);let points=q["points"].as_u64().unwrap_or(1);json!({"questionId":q["id"],"number":n,"points":points,"coveredNumbers":(n..n+points).collect::<Vec<_>>()})}).collect();
+        let data = json!({"context":context,"proposed":v,"requiredQuestionIds":required,"programVerifiedNumberCoverage":coverage,"coverageRule":"One multiple_choice object with number=N and points=2 covers both N and N+1. The next object begins at N+2. Do not demand a duplicate object for the second position. Each decision must include every requiredQuestionId, even withdrawn allegations."});
         let identity = json!({"prompt":system,"provider":p,"data":data});
         let checked = checkpointed_with_response(dir, "issue-adjudication", &identity, Some(&dir.join(format!("adjudicate-{}.response.txt",crate::papers::hash(identity.to_string().as_bytes())))), || async {
             super::chat_recorded(
@@ -335,6 +345,8 @@ pub async fn audit(p: &ProviderConfig, key: &str, dir: &Path, context: &Value) -
             .await
         })
         .await?;
+        let checkpoint=dir.join(format!("adjudicate-{}.checked.json",crate::papers::hash(identity.to_string().as_bytes())));
+        let checked=super::repair::checked(p,key,system,json!(serde_json::to_string(&data)?),false,&checkpoint,checked,|checked|adjudication_verdict(&v,checked).map(|_|())).await?;
         v = adjudication_verdict(&v, &checked)?;
         if v["pass"] == true {
             let missing:Vec<_>=context["answerDisagreements"].as_array().into_iter().flatten().filter(|d|!v["resolutions"].as_array().into_iter().flatten().any(|r|r["questionId"]==d["questionId"]&&r["reason"].as_str().is_some_and(|s|s.trim().chars().count()>=5))).map(|d|json!({"section":d["questionId"].as_str().unwrap_or("").split('-').next(),"questionId":d["questionId"],"reason":"独立答案分歧仍缺少来源解释","fix":format!("按原文核实 {d}")})).collect();
@@ -345,6 +357,36 @@ pub async fn audit(p: &ProviderConfig, key: &str, dir: &Path, context: &Value) -
         }
     }
     Ok(v)
+}
+fn original_position(material:&Value,id:&str,section:&str,part:u64)->Result<usize>{
+ let qs=material["questions"].as_array().ok_or_else(||error("原稿缺少题目"))?;
+ if let Some(i)=qs.iter().position(|q|q["id"]==id){return Ok(i);}
+ id.strip_prefix(&format!("{section}-{part}-")).and_then(|n|n.parse::<usize>().ok()).filter(|n|*n>0&&*n<=qs.len()).map(|n|n-1).ok_or_else(||error(format!("题号 {id} 不在 {section} Part {part} 原题范围")))
+}
+fn assembled_position(material:&Value,id:&str,section:&str,part:u64)->Result<usize>{
+ let count=material["questions"].as_array().ok_or_else(||error("原稿缺少题目"))?.len();
+ if let Some(i)=id.strip_prefix(&format!("{section}-{part}-")).and_then(|n|n.parse::<usize>().ok()).filter(|n|*n>0&&*n<=count){return Ok(i-1);}
+ original_position(material,id,section,part)
+}
+fn matching_group_key(q:&Value)->Option<&str>{
+ if q["kind"]!="matching"||q["points"]!=1{return None;}
+ let slots=q["slots"].as_array().filter(|s|s.len()==1)?;let label=slots[0].as_str().filter(|s|!s.is_empty())?;let prompt=q["prompt"].as_str()?.trim();
+ let without_colon=prompt.trim_end_matches(':').trim_end();Some(without_colon.strip_suffix(label).unwrap_or(prompt).trim_end())
+}
+pub fn question_repair_positions(material:&Value,issues:&[Value],section:&str,part:u64)->Result<Vec<usize>>{
+ let mut positions=std::collections::BTreeSet::new();
+ for issue in issues{
+  positions.insert(assembled_position(material,issue["questionId"].as_str().ok_or_else(||error("校审缺少题号"))?,section,part)?);
+  for id in issue["affectedQuestionIds"].as_array().into_iter().flatten(){positions.insert(assembled_position(material,id.as_str().ok_or_else(||error("成组问题题号必须是字符串"))?,section,part)?);}
+ }
+ let qs=material["questions"].as_array().unwrap();let seeds:Vec<_>=positions.iter().copied().collect();
+ for seed in seeds{if let Some(key)=matching_group_key(&qs[seed]){let mut first=seed;let mut last=seed;while first>0&&matching_group_key(&qs[first-1])==Some(key){first-=1;}while last+1<qs.len()&&matching_group_key(&qs[last+1])==Some(key){last+=1;}positions.extend(first..=last);}}
+ Ok(positions.into_iter().collect())
+}
+pub fn normalize_repair_ids(material:&Value,patch:&mut Value,section:&str,part:u64)->Result<()>{
+ for row in patch["repairs"].as_array_mut().ok_or_else(||error("定点修复缺少 repairs 列表"))?{
+  let i=original_position(material,row["id"].as_str().ok_or_else(||error("修复缺少原题号"))?,section,part)?;row["id"]=material["questions"][i]["id"].clone();
+ }Ok(())
 }
 pub fn merge_question_repairs(material: &Value, patch: &Value, targets: &[usize]) -> Result<Value> {
     if patch
@@ -361,7 +403,7 @@ pub fn merge_question_repairs(material: &Value, patch: &Value, targets: &[usize]
         .as_array_mut()
         .ok_or_else(|| error("缺少原题目"))?;
     if rows.len() != targets.len() {
-        return Err(error("定点修复数量与具体问题不一致"));
+        return Err(error(format!("定点修复需要恰好 {} 条，实际 {} 条。必须仅返回原题号 {}，不要把题组范围展开为未授权题目。实际返回 {}",targets.len(),rows.len(),json!(targets.iter().filter_map(|i|qs.get(*i).map(|q|q["id"].clone())).collect::<Vec<_>>()),json!(rows.iter().map(|r|r["id"].clone()).collect::<Vec<_>>()))));
     }
     let mut seen = std::collections::HashSet::new();
     for row in rows {
@@ -424,21 +466,7 @@ pub async fn correct(
         .cloned()
         .collect();
     if !issues.iter().any(|i| i["materialChangeRequired"] == true) {
-        let count = material["questions"]
-            .as_array()
-            .ok_or_else(|| error("原稿缺少题目"))?
-            .len();
-        let mut positions = std::collections::BTreeSet::new();
-        for issue in &issues {
-            let index = issue["questionId"]
-                .as_str()
-                .and_then(|s| s.strip_prefix(&prefix))
-                .and_then(|s| s.parse::<usize>().ok())
-                .filter(|n| *n > 0 && *n <= count)
-                .ok_or_else(|| error("无法将校审问题定位到原题目，未重写原文"))?;
-            positions.insert(index - 1);
-        }
-        let positions: Vec<_> = positions.into_iter().collect();
+        let positions=question_repair_positions(material,&issues,section,part)?;
         if positions.is_empty() {
             return Err(error("该部分没有可定位的修复目标"));
         }
@@ -447,7 +475,8 @@ pub async fn correct(
             .iter()
             .map(|i| material["questions"][*i].clone())
             .collect();
-        let data = json!({"source":{"paragraphs":material["paragraphs"],"transcript":material["transcript"],"visual":material["visual"]},"targets":targets,"issues":issues,"repairRound":verdict["requestRound"]});
+        let local_issues:Vec<_>=issues.iter().map(|issue|{let mut item=issue.clone();if let Ok(i)=assembled_position(material,issue["questionId"].as_str().unwrap_or(""),section,part){item["questionId"]=material["questions"][i]["id"].clone();}if let Some(ids)=item["affectedQuestionIds"].as_array_mut(){for id in ids {if let Ok(i)=assembled_position(material,id.as_str().unwrap_or(""),section,part){*id=material["questions"][i]["id"].clone();}}}item}).collect();
+        let data = json!({"source":{"paragraphs":material["paragraphs"],"transcript":material["transcript"],"visual":material["visual"]},"requiredQuestionIds":targets.iter().map(|q|q["id"].clone()).collect::<Vec<_>>(),"targets":targets,"issues":local_issues,"repairRound":verdict["requestRound"]});
         let identity = json!({"prompt":system,"provider":p,"data":data});
         let patch = checkpointed_with_response(dir, "question-fix", &identity, Some(&dir.join(format!("qfix-{}.response.txt",crate::papers::hash(identity.to_string().as_bytes())))), || async {
             super::chat_recorded(
@@ -464,6 +493,10 @@ pub async fn correct(
             .await
         })
         .await?;
+        let checkpoint=dir.join(format!("qfix-{}.checked.json",crate::papers::hash(identity.to_string().as_bytes())));
+        let patch=super::repair::checked(p,key,system,json!(serde_json::to_string(&data)?),false,&checkpoint,patch,|patch|{
+            normalize_repair_ids(material,patch,section,part)?;let mut fixed=merge_question_repairs(material,patch,&positions)?;generation::normalize_generated(&mut fixed,section,part)?;generation::validate_part(&fixed,section,part,kind)
+        }).await?;
         let mut fixed = merge_question_repairs(material, &patch, &positions)?;
         generation::normalize_generated(&mut fixed, section, part)?;
         generation::validate_part(&fixed, section, part, kind)?;
@@ -487,7 +520,9 @@ pub async fn correct(
         .await
     })
     .await?;
-    generation::normalize_generated(&mut v, section, part)?;
-    generation::validate_part(&v, section, part, kind)?;
+    let checkpoint=dir.join(format!("fix-{}.checked.json",crate::papers::hash(identity.to_string().as_bytes())));
+    v=super::repair::checked(p,key,&system,json!(serde_json::to_string(&context)?),false,&checkpoint,v,|v|{
+        generation::normalize_generated(v,section,part)?;generation::validate_part(v,section,part,kind)?;generation::validate_material_scope(v,section,part,verdict)
+    }).await?;
     Ok(v)
 }

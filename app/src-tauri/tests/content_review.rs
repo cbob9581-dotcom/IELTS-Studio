@@ -1,6 +1,26 @@
 use ielts_core::cloud::review;
 use serde_json::json;
 #[test]
+fn matching_group_repairs_include_contiguous_items_with_the_same_shared_instructions(){
+ let mut qs:Vec<_>=(1..=5).map(|n|json!({"id":format!("q{n}"),"kind":"matching","points":1,"prompt":format!("Match each role. Choose A–E. Role {n}:"),"slots":[format!("Role {n}")]})).collect();qs.push(json!({"id":"q6","kind":"matching","points":1,"prompt":"A different group's instructions","slots":["Other"]}));let m=json!({"questions":qs});
+ assert_eq!(review::question_repair_positions(&m,&[json!({"questionId":"listening-2-2"})],"listening",2).unwrap(),vec![0,1,2,3,4]);
+}
+#[test]
+fn omitted_adjudication_decisions_report_exact_question_ids_for_bounded_feedback(){
+ let proposed=json!({"issues":[{"questionId":"listening-3-5"},{"questionId":"listening-3-9"}]});let checked=json!({"decisions":[{"questionId":"listening-3-5","disposition":"withdraw","reason":"This group correctly covers two numbered positions."}]});
+ let error=review::adjudication_verdict(&proposed,&checked).unwrap_err();assert!(error.message.contains("listening-3-9"));
+}
+#[test]
+fn grouped_review_ids_resolve_to_all_original_questions_without_allowing_unknown_ids(){
+ let m=json!({"questions":[{"id":"q1"},{"id":"q2"},{"id":"q3"}]});
+ let issues=vec![json!({"questionId":"reading-1-1","affectedQuestionIds":["reading-1-1","reading-1-2"]})];
+ assert_eq!(review::question_repair_positions(&m,&issues,"reading",1).unwrap(),vec![0,1]);
+ let mut patch=json!({"repairs":[{"id":"reading-1-1","prompt":"fixed"},{"id":"q2","prompt":"fixed"}]});review::normalize_repair_ids(&m,&mut patch,"reading",1).unwrap();assert_eq!(patch["repairs"][0]["id"],"q1");
+ assert!(review::merge_question_repairs(&m,&patch,&[0,1]).is_ok());
+ assert!(review::question_repair_positions(&m,&[json!({"questionId":"reading-2-1"})],"reading",1).is_err());
+ let colliding=json!({"questions":[{"id":"reading-1-2"},{"id":"reading-1-1"}]});assert_eq!(review::question_repair_positions(&colliding,&[json!({"questionId":"reading-1-1"})],"reading",1).unwrap(),vec![0]);
+}
+#[test]
 fn review_context_keeps_one_source_copy_and_verifiable_evidence_references(){
  let text="The immutable source says that wetlands remove nutrients.";let c=json!({"paper":{"sections":[{"section":"reading","paragraphs":[{"id":"reading-1-p1","part":1,"text":text}],"questions":[{"id":"reading-1-1","part":1,"evidence":[text],"answer":{"accepted":["wetlands"]}}]}]},"sourceMaterials":[{"section":"reading","part":1,"material":{"paragraphs":[{"id":"p1","text":text}],"questions":[{"evidence":[text]}],"visual":{"title":"Preserved chart"},"transcript":[]}}]});
  let small=review::compact_context(&c);assert_eq!(small["paper"]["sections"][0]["questions"][0]["evidenceRefs"],json!(["reading-1-p1"]));assert_eq!(small.to_string().matches(text).count(),1);assert_eq!(small["sourceMaterials"][0]["material"]["visual"]["title"],"Preserved chart");assert_eq!(small["paper"]["sections"][0]["questions"][0]["answer"],c["paper"]["sections"][0]["questions"][0]["answer"]);assert!(!review::blind_context(&small).to_string().contains("evidenceRefs"));
