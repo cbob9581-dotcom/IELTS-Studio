@@ -19,3 +19,4 @@ foreach($name in @('speaking-room.glb','manifest.json')){Copy-Item -LiteralPath 
 foreach($name in @('THIRD_PARTY_NOTICES.txt','ASSET-NOTICES.md')){Copy-Item -LiteralPath (Join-Path $projectRoot ('app/notices/'+$name)) -Destination $delivery -Force}
 if(-not $NoBundle){Copy-Item -LiteralPath (Join-Path $release ('bundle/nsis/IELTS Studio_'+$package.version+'_x64-setup.exe')) -Destination $delivery -Force}
 Get-ChildItem -LiteralPath $delivery | Select-Object Name,Length
+& (Join-Path $PSScriptRoot 'update-desktop-shortcut.ps1') -Version $package.version

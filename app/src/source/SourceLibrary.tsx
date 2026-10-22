@@ -39,7 +39,6 @@ export function SourceLibrary({ port,initialProjectId }: { port: DesktopPort | n
     [editId, setEditId] = useState("");
   const [test, setTest] = useState("Test 1"),
     [selected, setSelected] = useState<string[]>([]),
-    [confirmed, setConfirmed] = useState(false),
     [filter, setFilter] = useState("all");
   const pendingLocate = useRef<string[]>([]);
   const runner = port ? sourceRunner(port) : null;
@@ -59,7 +58,7 @@ export function SourceLibrary({ port,initialProjectId }: { port: DesktopPort | n
   useEffect(() => {
     if (progress?.project && (!project || project.id === progress.project.id)) {
       setProject(progress.project);
-      setConfirmed(false);
+
     }
     if (progress?.error) setError(progress.error);
   }, [progress]);
@@ -102,7 +101,7 @@ export function SourceLibrary({ port,initialProjectId }: { port: DesktopPort | n
         ...payload,
       });
       setProject(p);
-      setConfirmed(false);
+
       return p as SourceProject;
     } finally {
       setSaving(false);
@@ -204,7 +203,7 @@ export function SourceLibrary({ port,initialProjectId }: { port: DesktopPort | n
       {project && (
         <>
           <h2>{project.title}</h2>
-          <section className="settings-card"><h3>按 Test 查看处理结果</h3><p className="muted">已提取的部分持续保留。先核对下方版面预览中的范围，再按 Test 一次确认并处理；有缺失的部分单独补齐。</p>{sourceHealth(project).map(h=><article className="settings-card" key={h.test}><h4>{h.test} · 已提取 {h.questions} 个题目对象</h4><p>{h.pending} 个单元待处理，{h.failures.length} 个单元需处理，{h.missingAnswers.length} 题缺有来源的答案。</p>{!!h.missingAnswers.length&&<details><summary>查看缺失答案</summary><p>{h.missingAnswers.join('、')}</p></details>}{h.failures.map(f=><p key={f.id} className="error">{f.title}：{f.error}</p>)}<button disabled={busy} onClick={()=>perform(async()=>{const p=await action('confirm_test',{test:h.test});const rank:Record<string,number>={questions:0,answers:1,explanations:2,essays:3,transcript:4};const targets=p.units.filter((u:Unit)=>u.test===h.test&&u.state!=='complete').sort((a:Unit,b:Unit)=>(rank[a.role]??9)-(rank[b.role]??9)||a.part-b.part).map((u:Unit)=>u.id);if(targets.length)await runner?.run(p,targets);})}>确认 {h.test} 范围并批量处理（可能计费）</button></article>)}</section>
+          <section className="settings-card"><h3>按 Test 查看处理结果</h3><p className="muted">已提取的部分持续保留。选择需要使用的 Test，由系统整理题目和匹配答案；已完成结果会保留。</p>{sourceHealth(project).map(h=><article className="settings-card" key={h.test}><h4>{h.test} · 已提取 {h.questions} 个题目对象</h4><p>{h.pending} 个单元待处理，{h.failures.length} 个单元需处理，{h.missingAnswers.length} 题缺有来源的答案。</p>{!!h.missingAnswers.length&&<details><summary>查看缺失答案</summary><p>{h.missingAnswers.join('、')}</p></details>}{h.failures.map(f=><p key={f.id} className="error">{f.title}：{f.error}</p>)}<button disabled={busy} onClick={()=>perform(async()=>{const p=await action('confirm_test',{test:h.test});const rank:Record<string,number>={questions:0,answers:1,explanations:2,essays:3,transcript:4};const targets=p.units.filter((u:Unit)=>u.test===h.test&&u.state!=='complete').sort((a:Unit,b:Unit)=>(rank[a.role]??9)-(rank[b.role]??9)||a.part-b.part).map((u:Unit)=>u.id);if(targets.length)await runner?.run(p,targets);})}>整理 {h.test}（文字服务按预算计费）</button></article>)}</section>
           <section className="settings-card">
             <h3>补充题册 / 答案 / 解析 / 音频</h3>
             <p>资料用途可多选。同一文件再次加入会合并用途，原件按内容去重。</p>
@@ -344,6 +343,7 @@ export function SourceLibrary({ port,initialProjectId }: { port: DesktopPort | n
             ))}
           </section>
           <ListeningAudioPanel port={port!} project={project} busy={busy} action={action} run={(p,ids)=>runner!.run(p,ids)} report={e=>setError(errorText(e))}/>
+          <details><summary>高级资料管理（可选）</summary>
           <div className="source-workspace">
             <div>
               {document && (
@@ -587,17 +587,18 @@ export function SourceLibrary({ port,initialProjectId }: { port: DesktopPort | n
               ))
             )}
           </section>
+          </details>
           <section className="settings-card">
-            <h3>发布到考试题库</h3>
+            <h3>选择已整理的试卷</h3>
             <label>
-              发布 Test
+              选择 Test
               <input
                 value={test}
                 disabled={busy}
                 onChange={(e) => {
                   setTest(e.target.value);
                   setSelected([]);
-                  setConfirmed(false);
+
                 }}
                 list="source-test-list"
               />
@@ -621,32 +622,23 @@ export function SourceLibrary({ port,initialProjectId }: { port: DesktopPort | n
                           ? [...a, u.id]
                           : a.filter((id) => id !== u.id),
                       );
-                      setConfirmed(false);
+
                     }}
                   />
                   {sectionNames[u.section]} Part {u.part} ·{" "}
                   {stateNames[u.state] ?? u.state}
                 </label>
               ))}
-            <label className="check-row">
-              <input
-                type="checkbox"
-                disabled={busy}
-                checked={confirmed}
-                onChange={(e) => setConfirmed(e.target.checked)}
-              />
-              已对照原件核对题目、答案、图表及真实听力音频
-            </label>
             <button
               className="primary"
-              disabled={busy || !confirmed || !selected.length}
+              disabled={busy || !project.units.some(u=>u.test===test&&u.role==="questions"&&u.state==="complete")}
               onClick={() =>
                 perform(() =>
-                  action("publish", { test, units: selected, confirmed: true }),
+                  action("publish", { test, units: selected.length?selected:project.units.filter(u=>u.test===test&&u.role==="questions"&&u.state==="complete").map(u=>u.id) }),
                 )
               }
             >
-              发布新版本
+              使用这套试卷
             </button>
             <p className="muted">
               缺少答案、关键图片、音频或存在答案冲突时，发布会被阻止。缺少解析不影响考试。发布后可在“我的题库”选择。

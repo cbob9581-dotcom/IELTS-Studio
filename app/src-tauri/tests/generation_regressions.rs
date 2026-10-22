@@ -1,6 +1,12 @@
 use ielts_core::cloud::generation;
 use serde_json::{json,Value};
 #[test]
+fn legacy_original_response_uses_unique_real_source_and_compiles_one_word_only_instructions(){
+ let mut v=json!({"paragraphs":[],"transcript":[{"id":"t1","speaker":0,"text":"Megan Taylor. I can attend at six pm."}],"questions":[{"id":"q1","kind":"gap_fill","prompt":"Write ONE WORD ONLY. First name: ____","answer":{"accepted":["Megan"],"maxWords":1},"evidence":["My name is Megan Taylor."]},{"id":"q2","kind":"gap_fill","prompt":"Write ONE WORD AND/OR A NUMBER. Time: ____","answer":{"accepted":["six pm"],"maxWords":1},"evidence":["I can attend at six pm."]}]});
+ let original=v["transcript"].clone();generation::normalize_generated(&mut v,"listening",1).unwrap();assert_eq!(v["transcript"],original);assert_eq!(v["questions"][0]["evidence"],json!(["Megan Taylor. I can attend at six pm."]));assert_eq!(v["questions"][1]["answer"]["maxWords"],2);assert!(v["questions"][1]["prompt"].as_str().unwrap().contains("NO MORE THAN TWO WORDS"));
+ let mut ambiguous=json!({"paragraphs":[],"transcript":[{"id":"a","speaker":0,"text":"Megan arrived."},{"id":"b","speaker":1,"text":"Megan left."}],"questions":[{"id":"q","kind":"gap_fill","prompt":"ONE WORD","answer":{"accepted":["Megan"]},"evidence":["An invented quote about Megan."]}]});generation::normalize_generated(&mut ambiguous,"listening",1).unwrap();assert_eq!(ambiguous["questions"][0]["evidence"][0],"An invented quote about Megan.");
+}
+#[test]
 fn mapping_answer_object_is_wrapped_without_changing_its_slots_or_values(){
  let mut v=duplicate_group();v["questions"][0]=json!({"id":"q1","number":1,"part":1,"kind":"matching","points":1,"prompt":"Which paragraph contains this information?","slots":["statement"],"options":["A","B"],"answer":{"accepted":{"statement":"B"},"caseSensitive":false},"evidence":["oak and pine"]});
  generation::normalize_generated(&mut v,"reading",1).unwrap();generation::validate_part(&v,"reading",1,None).unwrap();assert_eq!(v["questions"][0]["answer"]["accepted"],json!([{"statement":"B"}]));

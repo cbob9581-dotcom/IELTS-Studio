@@ -20,7 +20,7 @@ describe("recoverable text-first cloud work",()=>{
   const port={cloudList:async()=>[job],cloudRead:async()=>job,cloudFixText:fix} as unknown as DesktopPort;
   render(<CloudLibrary port={port} mode="training" section="listening" part="" kind="" onPublished={()=>{}}/>);
   fireEvent.click(await screen.findByRole("button",{name:/AI 出题.*听力/}));
-  expect(await screen.findByRole("button",{name:"发布到本地题库"})).toBeDisabled();
+  expect(screen.queryByRole("button",{name:"发布到本地题库"})).not.toBeInTheDocument();
   fireEvent.click(await screen.findByRole("button",{name:"AI 修复并复查（仅文字）"}));
   await waitFor(()=>expect(fix).toHaveBeenCalledWith("j"));
  });

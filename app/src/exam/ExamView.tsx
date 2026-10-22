@@ -53,6 +53,11 @@ export function ExamView({
     attempt.scope,
   );
   const [current, setCurrent] = useState(section.questions[0].id);
+  const isReading=attempt.section==='reading';
+  const readingParts=[...new Set(section.questions.map(q=>q.part))].sort((a,b)=>a-b);
+  const [readingPart,setReadingPart]=useState(readingParts[0]);
+  const selectedPart=readingParts.includes(readingPart)?readingPart:readingParts[0];
+  const paragraphs=isReading?section.paragraphs.filter(p=>p.part===selectedPart):section.paragraphs;
   const [showAnswers, setShowAnswers] = useState(false);
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [mediaError, setMediaError] = useState("");
@@ -60,6 +65,7 @@ export function ExamView({
   const [note, setNote] = useState("");
   const [selection, setSelection] = useState("");
   const range = useRef<{ range: Range; paragraph: HTMLElement } | null>(null);
+  function changeReadingPart(part:number){setReadingPart(part);setShowAnswers(false);setSelection('');setNote('');range.current=null;}
   useEffect(() => {
     let cancel = false;
     const created: string[] = [];
@@ -123,7 +129,7 @@ export function ExamView({
   const isWriting = attempt.section === "writing";
   const questions = isWriting
     ? section.questions.filter((q) => q.id === current)
-    : section.questions;
+    : isReading?section.questions.filter(q=>q.part===selectedPart):section.questions;
   const listening = attempt.section === "listening";
   const blocked = paused || !!mediaError || (listening && !audioReady);
   return (
@@ -144,7 +150,7 @@ export function ExamView({
               <button onClick={onPause}>
                 {paused ? "继续计时" : "暂停练习"}
               </button>
-              <button onClick={() => {if(!showAnswers)onChange({...attempt,revealedQuestions:[...new Set([...(attempt.revealedQuestions??[]),...section.questions.map(q=>q.id)])]});setShowAnswers(!showAnswers);}}>
+              <button onClick={() => {if(!showAnswers)onChange({...attempt,revealedQuestions:[...new Set([...(attempt.revealedQuestions??[]),...questions.map(q=>q.id)])]});setShowAnswers(!showAnswers);}}>
                 {showAnswers ? "收起解析" : "查看解析"}
               </button>
             </>
@@ -154,6 +160,7 @@ export function ExamView({
           </button>
         </div>
       </div>
+      {isReading&&<nav className="library-actions" aria-label="阅读文章切换">{readingParts.map(part=>{const qs=section.questions.filter(q=>q.part===part);const first=qs[0]?.number;const last=Math.max(...qs.map(q=>q.number+q.points-1));return <button key={part} aria-pressed={part===selectedPart} onClick={()=>{changeReadingPart(part);setCurrent(qs[0].id);}}>第 {part} 篇 · 第 {first}–{last} 题</button>;})}<span className="muted">本次阅读共 {readingParts.length} 篇 · {section.questions.reduce((n,q)=>n+q.points,0)} 题</span></nav>}
       {listening && (
         <ListeningPlayer
           ranges={section.audioPlaylist}
@@ -184,7 +191,7 @@ export function ExamView({
         <div className="passage-pane">
           {section.paragraphs.length > 0 && (
             <>
-              <div className="eyebrow">READING PASSAGE</div>
+              <div className="eyebrow">{isReading?`READING PASSAGE ${selectedPart}`:'试题材料'}</div>
               <div
                 onMouseUp={() => {
                   const s = window.getSelection();
@@ -202,7 +209,7 @@ export function ExamView({
                   }
                 }}
               >
-                {section.paragraphs.map((p) => (
+                {paragraphs.map((p) => (
                   <p data-paragraph={p.id} key={p.id}>
                     <MarkedText
                       text={p.text}
@@ -264,10 +271,11 @@ export function ExamView({
                 key={q.id}
                 onClick={() => {
                   setCurrent(q.id);
+                  if(isReading&&q.part!==selectedPart)changeReadingPart(q.part);
                   if (!isWriting)
-                    document
+                    requestAnimationFrame(()=>document
                       .getElementById(`q-${q.id}`)
-                      ?.scrollIntoView({ block: "center", behavior: "smooth" });
+                      ?.scrollIntoView?.({ block: "center", behavior: "smooth" }));
                 }}
               >
                 {q.number}

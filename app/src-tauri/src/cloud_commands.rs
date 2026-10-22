@@ -222,6 +222,7 @@ pub async fn cloud_step(id: String, state: State<'_, AppState>) -> Result<Value>
     let a = job_root(&state, &id)?;
     let mut j = jobs::load(&a, &id)?;
     if ["complete", "review_required", "source_required"].contains(&j["state"].as_str().unwrap_or("")) {
+        if cloud::publication::ready(&j){locked(&state,|store|cloud::publication::finish(store,&a,&mut j))?;}
         return Ok(j);
     }
     j["state"] = json!("running");
@@ -248,6 +249,11 @@ pub async fn cloud_step(id: String, state: State<'_, AppState>) -> Result<Value>
         j["error"] = json!(e.message);
     } else if j["state"] == "running" {
         j["state"] = json!("pending");
+    }
+    if cloud::publication::ready(&j){
+        if let Err(e)=locked(&state,|store|cloud::publication::finish(store,&a,&mut j)){
+            j["state"]=json!("failed");j["error"]=json!(e.message);j["errorCode"]=json!(e.code);
+        }
     }
     j["updatedAt"] = json!(now_ms());
     let elapsed = started.elapsed().as_millis() as u64;
@@ -367,6 +373,7 @@ pub fn cloud_add_media(id: String, path: String, state: State<AppState>) -> Resu
         _ => return Err(error("仅支持 WAV/MP3/OGG/PNG/JPEG/WebP")),
     };
     let data = fs::read(source)?;
+    if mime.starts_with("audio/"){cloud::publication::validate_audio_upload(&data,&ext)?;}
     let asset_id = format!("attached-{}", uuid::Uuid::new_v4());
     let dir = jobs::dir(&a, &id)?;
     add_asset(
@@ -377,7 +384,10 @@ pub fn cloud_add_media(id: String, path: String, state: State<AppState>) -> Resu
         mime,
         &data,
     )?;
-    j["paper"]["assets"] = j["assets"].clone();
+    if mime.starts_with("audio/")&&j["kind"]=="generation"&&jobs::content_approved(&j){
+        cloud::publication::attach_audio(&mut j,&asset_id)?;
+        locked(&state,|store|cloud::publication::finish(store,&a,&mut j))?;
+    }else{j["paper"]["assets"] = j["assets"].clone();}
     jobs::save(&a, &j)?;
     Ok(j)
 }

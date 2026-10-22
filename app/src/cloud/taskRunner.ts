@@ -14,6 +14,10 @@ class TaskRunner{
  snapshot=()=>this.state;
  subscribe=(f:()=>void)=>{this.listeners.add(f);return()=>{this.listeners.delete(f);};};
  private emit(change:Partial<Snapshot>){this.state={...this.state,...change};this.listeners.forEach(f=>f());}
+ private async finish(job:CloudJob){
+  if(job.kind==='generation'&&job.state==='review_required'&&job.validation?.pass===true&&!job.validation.issues.length&&!job.audioPending&&this.port.cloudPublish){job=await this.port.cloudPublish(job.id);}
+  this.emit({job});return job;
+ }
  async pause(){this.stopped=true;if(this.nativeTask&&this.port.taskPause){await this.port.taskPause(this.nativeTask);return;}if(this.state.job&&this.state.busy)await this.port.cloudCancel(this.state.job.id);}
  async run(initial:CloudJob):Promise<CloudJob>{
   if(this.state.busy)throw Error("已有任务在后台运行，请先暂停或等待完成。");
@@ -26,7 +30,7 @@ class TaskRunner{
      if(this.port.cloudProgress){const progress=await this.port.cloudProgress(initial.id);this.emit({job:{...this.state.job!,...progress}});}
      await new Promise(r=>setTimeout(r,1000));
     }
-    const job=await this.port.cloudRead(initial.id);this.emit({job});return job;
+    return await this.finish(await this.port.cloudRead(initial.id));
    }catch(e){this.emit({error:errorText(e)});throw e;}finally{this.nativeTask=null;this.emit({busy:false});}
   }
   let polling=false,version=0;
@@ -39,7 +43,7 @@ class TaskRunner{
     const stage=job.stage;job=await this.port.cloudStep(job.id);version++;this.emit({job});
     if(job.kind==='import'&&job.stage===stage&&stage===1&&job.state==='pending'&&!this.stopped)await new Promise(r=>setTimeout(r,3000));
    }
-   return job;
+   return await this.finish(job);
   }catch(e){this.emit({error:errorText(e)});throw e;}
   finally{clearInterval(timer);this.emit({busy:false});}
  }

@@ -226,7 +226,7 @@ pub fn validate_part(v: &Value, section: &str, part: u64, kind: Option<&str>) ->
 
 /// Original generation only: preserve source and answers, compile visible word limits consistently.
 pub fn reconcile_generated_limits(v:&mut Value)->Result<()> {
- let re=regex::Regex::new(r"(?i)\bNO\s+MORE\s+THAN\s+(ONE|TWO|THREE)\s+WORDS?\b").unwrap();
+ let re=regex::Regex::new(r"(?i)\b(?:NO\s+MORE\s+THAN\s+)?(ONE|TWO|THREE)\s+WORDS?(?:\s+ONLY)?\b").unwrap();
  for q in v["questions"].as_array_mut().ok_or_else(||error("缺少题目列表"))? {
   if !["gap_fill","short_answer"].contains(&q["kind"].as_str().unwrap_or("")){continue;}
   let needed=q["answer"]["accepted"].as_array().into_iter().flatten().filter_map(Value::as_str).map(|s|s.split_whitespace().filter(|s|s.chars().any(char::is_alphabetic)).count()).max().unwrap_or(0);
@@ -234,7 +234,20 @@ pub fn reconcile_generated_limits(v:&mut Value)->Result<()> {
   let prompt=q["prompt"].as_str().unwrap_or("").to_owned();if let Some(caps)=re.captures(&prompt){let old=match caps[1].to_uppercase().as_str(){"ONE"=>1,"TWO"=>2,_=>3};let limit=old.max(needed);if limit>old{let new=match limit{1=>"ONE",2=>"TWO",_=>"THREE"};q["prompt"]=json!(re.replace_all(&prompt,format!("NO MORE THAN {new} WORDS")).to_string());}q["answer"]["maxWords"]=json!(limit);}
  }Ok(())
 }
-pub fn normalize_generated(v:&mut Value,section:&str,part:u64)->Result<()>{normalize_metadata(v,section,part)?;reconcile_generated_limits(v)}
+pub fn normalize_generated(v:&mut Value,section:&str,part:u64)->Result<()>{
+ normalize_metadata(v,section,part)?;
+ // A legacy model's retyped quote is never treated as source. Locate the actual
+ // source only when all literal answers identify exactly one existing passage/turn.
+ let sources:Vec<_>=["paragraphs","transcript"].iter().flat_map(|field|v[*field].as_array().into_iter().flatten()).filter(|s|s["speaker"]!=2).filter_map(|s|Some((s["id"].as_str()?.to_owned(),s["text"].as_str()?.to_owned()))).collect();
+ for q in v["questions"].as_array_mut().ok_or_else(||error("缺少题目列表"))?{
+  if !["gap_fill","short_answer"].contains(&q["kind"].as_str().unwrap_or("")){continue;}
+  let bad_quote=q["evidence"].as_array().is_some_and(|es|es.iter().any(|e|e.as_str().is_some_and(|quote|!sources.iter().any(|(_,text)|text.contains(quote)))));
+  if !bad_quote{continue;}let Some(answers)=q["answer"]["accepted"].as_array().filter(|a|!a.is_empty()&&a.iter().all(|a|a.as_str().is_some_and(|s|s.trim().chars().count()>=2)))else{continue;};
+  let patterns:Vec<_>=answers.iter().map(|a|regex::Regex::new(&format!(r"(?i)(?:^|[^\p{{L}}\p{{N}}]){}(?:$|[^\p{{L}}\p{{N}}])",regex::escape(a.as_str().unwrap().trim())))).collect::<std::result::Result<_,_>>().map_err(error)?;
+  let matches:Vec<_>=sources.iter().filter(|(_,text)|patterns.iter().all(|p|p.is_match(text))).collect();if matches.len()==1{q["evidenceSourceIds"]=json!([matches[0].0]);}
+ }
+ normalize_metadata(v,section,part)?;reconcile_generated_limits(v)
+}
 pub fn normalize_metadata(v: &mut Value, section: &str, part: u64) -> Result<()> {
     let mut source_map=std::collections::BTreeMap::new();
     for (field,prefix) in [("paragraphs","p"),("transcript","t")]{

@@ -209,9 +209,6 @@ pub async fn source_action(action: String, payload: Value, state: State<'_,AppSt
             }
         },
         "publish" => {
-            if payload["confirmed"] != true {
-                return Err(err("请先确认已核对原题、答案和媒体"));
-            }
             let test = payload["test"].as_str().ok_or_else(|| err("请选择 Test"))?;
             let selected: Vec<String> = payload["units"]
                 .as_array()

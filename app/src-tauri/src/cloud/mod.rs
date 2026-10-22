@@ -7,6 +7,7 @@ pub mod repair;
 pub mod request;
 pub mod visuals;
 pub mod review;
+pub mod publication;
 use crate::{
     configuration::ProviderConfig,
     contracts::{DesktopError, Result},

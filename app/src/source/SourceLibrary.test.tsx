@@ -3,6 +3,13 @@ import { describe, it, expect, vi } from "vitest";
 import { SourceLibrary } from "./SourceLibrary";
 import type { DesktopPort } from "../platform/desktop";
 describe("source workspace", () => {
+  it("uses completed test material without asking learners to certify the answer key",async()=>{
+    const project={id:"p",title:"Book",revision:1,documents:[],units:[{id:"u",test:"Test 1",section:"reading",part:1,role:"questions",state:"complete",confirmed:true,result:{section:{questions:[{id:"q",number:1,answer:{accepted:["answer"]},sourceAnchors:[]}]}}}],entries:[],publications:[]};
+    const action=vi.fn(async(a:string)=>a==="list"?[project]:project);
+    render(<SourceLibrary port={{sourceAction:action} as unknown as DesktopPort} initialProjectId="p"/>);
+    const usePaper=await screen.findByRole("button",{name:"使用这套试卷"});expect(usePaper).toBeEnabled();expect(screen.queryByRole("checkbox",{name:/已对照原件核对/})).not.toBeInTheDocument();fireEvent.click(usePaper);
+    await waitFor(()=>expect(action).toHaveBeenCalledWith("publish",expect.objectContaining({test:"Test 1",units:["u"]})));
+  });
   it("creates a named Academic project and offers supplementary answer/explanation uploads", async () => {
     let project: any = null;
     const action = vi.fn(async (a: string, p: any) => {
